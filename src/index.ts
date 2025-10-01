@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
-import sequelize, { testConnection } from './config/database';
+import prisma, { testConnection } from './config/database';
+import authRoutes from './routes/auth';
 
 // Load environment variables
 dotenv.config();
@@ -16,21 +17,42 @@ app.use(cors({
   origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   credentials: true
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// API Routes
+app.use('/api/auth', authRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
   res.json({
     message: 'Incubation Management System Backend API',
     version: '1.0.0',
-    status: 'Running'
+    status: 'Running',
+    endpoints: {
+      auth: '/api/auth',
+      health: '/health'
+    }
   });
 });
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    database: 'Connected',
+    version: '1.0.0'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Endpoint not found',
+    path: req.originalUrl
+  });
 });
 
 // Start server

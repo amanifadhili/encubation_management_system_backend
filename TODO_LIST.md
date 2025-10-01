@@ -53,28 +53,28 @@ This comprehensive TODO list outlines the complete backend development process f
   - [x] Announcement model (id, title, content, author_id, created_at, updated_at)
 - [x] Define model relationships and constraints
 - [x] Generate Prisma client
-- [ ] Run database migrations to create tables (requires MySQL server to be running)
+- [x] Run database migrations to create tables (requires MySQL server to be running)
 
 ---
 
 ## 🔐 Phase 2: Authentication & Authorization
 
 ### 2.1 JWT Authentication Setup
-- [ ] Implement JWT token generation and verification
-- [ ] Create authentication middleware
-- [ ] Set up password hashing with bcrypt
-- [ ] Implement login/logout endpoints
+- [x] Implement JWT token generation and verification
+- [x] Create authentication middleware
+- [x] Set up password hashing with bcrypt
+- [x] Implement login/logout endpoints
 
 ### 2.2 Role-Based Access Control
-- [ ] Create role-based middleware (director, manager, mentor, incubator)
-- [ ] Implement permission checks for each endpoint
-- [ ] Set up route protection based on user roles
+- [x] Create role-based middleware (director, manager, mentor, incubator)
+- [x] Implement permission checks for each endpoint
+- [x] Set up route protection based on user roles
 
 ### 2.3 Authentication Endpoints
-- [ ] POST `/api/auth/login` - User login
-- [ ] POST `/api/auth/logout` - User logout
-- [ ] GET `/api/auth/me` - Get current user info
-- [ ] POST `/api/auth/refresh` - Token refresh (optional)
+- [x] POST `/api/auth/login` - User login
+- [x] POST `/api/auth/logout` - User logout
+- [x] GET `/api/auth/me` - Get current user info
+- [x] POST `/api/auth/refresh` - Token refresh (optional)
 
 ---
 
