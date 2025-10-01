@@ -8,7 +8,7 @@ A comprehensive Node.js/Express backend API for the Incubation Management System
 - **Authentication**: JWT-based authentication with role-based access control
 - **Real-time Communication**: Socket.io integration for messaging
 - **File Upload**: Support for project files and documents
-- **Database**: MySQL with Sequelize ORM
+- **Database**: MySQL with Prisma ORM
 - **Security**: Helmet, CORS, rate limiting, input validation
 
 ## 🛠️ Tech Stack
@@ -17,7 +17,7 @@ A comprehensive Node.js/Express backend API for the Incubation Management System
 - **Framework**: Express.js
 - **Language**: TypeScript
 - **Database**: MySQL
-- **ORM**: Sequelize
+- **ORM**: Prisma
 - **Authentication**: JWT + bcrypt
 - **Real-time**: Socket.io
 - **Validation**: Joi
@@ -30,7 +30,7 @@ src/
 ├── config/          # Database and app configuration
 ├── controllers/     # Route controllers
 ├── middleware/      # Custom middleware
-├── models/         # Sequelize models
+├── prisma/         # Prisma schema and migrations
 ├── routes/         # API routes
 ├── services/       # Business logic services
 ├── types/          # TypeScript type definitions

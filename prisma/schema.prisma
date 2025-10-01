@@ -1,0 +1,305 @@
+// Prisma schema file for Incubation Management System
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  director
+  manager
+  mentor
+  incubator
+}
+
+enum TeamStatus {
+  active
+  pending
+  inactive
+}
+
+enum ProjectStatus {
+  active
+  pending
+  completed
+  on_hold
+}
+
+enum ProjectCategory {
+  Technology
+  Agriculture
+  Health
+  Education
+  Design
+}
+
+enum InventoryStatus {
+  available
+  low_stock
+  out_of_stock
+}
+
+enum RequestStatus {
+  pending
+  approved
+  declined
+}
+
+enum MessageType {
+  text
+  file
+}
+
+enum RecipientType {
+  team
+  user
+}
+
+enum TeamMemberRole {
+  team_leader
+  member
+}
+
+// User model
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password_hash String
+  role          UserRole
+  name          String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  team_members         TeamMember[]
+  projects_uploaded    ProjectFile[]
+  mentors_created      Mentor[]
+  requests_created     MaterialRequest[] @relation("RequestedBy")
+  requests_reviewed    MaterialRequest[] @relation("ReviewedBy")
+  messages_sent        Message[]
+  notifications_sent   Notification[]
+  announcements_created Announcement[]
+
+  @@map("users")
+}
+
+// Team model
+model Team {
+  id           String      @id @default(cuid())
+  team_name    String
+  company_name String?
+  status       TeamStatus  @default(pending)
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @updatedAt
+
+  // Relations
+  team_members         TeamMember[]
+  projects             Project[]
+  mentor_assignments   MentorAssignment[]
+  inventory_assignments InventoryAssignment[]
+  material_requests    MaterialRequest[]
+
+  @@map("teams")
+}
+
+// Team Member model
+model TeamMember {
+  id        String          @id @default(cuid())
+  team_id   String
+  user_id   String
+  role      TeamMemberRole  @default(member)
+  joined_at DateTime        @default(now())
+
+  // Relations
+  team Team @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, user_id])
+  @@map("team_members")
+}
+
+// Project model
+model Project {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  team_id     String
+  category    ProjectCategory
+  status      ProjectStatus   @default(pending)
+  progress    Int             @default(0)
+  created_at  DateTime        @default(now())
+  updated_at  DateTime        @updatedAt
+
+  // Relations
+  team        Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  project_files ProjectFile[]
+
+  @@map("projects")
+}
+
+// Project File model
+model ProjectFile {
+  id           String   @id @default(cuid())
+  project_id   String
+  file_name    String
+  file_path    String
+  file_type    String?
+  file_size    Int?
+  uploaded_by  String
+  uploaded_at  DateTime @default(now())
+
+  // Relations
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  uploader User   @relation(fields: [uploaded_by], references: [id])
+
+  @@map("project_files")
+}
+
+// Mentor model
+model Mentor {
+  id        String   @id @default(cuid())
+  user_id   String   @unique
+  expertise String?
+  phone     String?
+  created_at DateTime @default(now())
+
+  // Relations
+  user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  mentor_assignments  MentorAssignment[]
+
+  @@map("mentors")
+}
+
+// Mentor Assignment model
+model MentorAssignment {
+  id          String   @id @default(cuid())
+  mentor_id   String
+  team_id     String
+  assigned_at DateTime @default(now())
+
+  // Relations
+  mentor Mentor @relation(fields: [mentor_id], references: [id], onDelete: Cascade)
+  team   Team   @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@unique([mentor_id, team_id])
+  @@map("mentor_assignments")
+}
+
+// Inventory Item model
+model InventoryItem {
+  id                String          @id @default(cuid())
+  name              String
+  description       String?
+  total_quantity     Int             @default(0)
+  available_quantity Int             @default(0)
+  status            InventoryStatus @default(available)
+  created_at        DateTime        @default(now())
+  updated_at        DateTime        @updatedAt
+
+  // Relations
+  inventory_assignments InventoryAssignment[]
+
+  @@map("inventory_items")
+}
+
+// Inventory Assignment model
+model InventoryAssignment {
+  id           String   @id @default(cuid())
+  item_id      String
+  team_id      String
+  quantity     Int
+  assigned_at  DateTime @default(now())
+  returned_at  DateTime?
+
+  // Relations
+  item InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  team Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
+
+  @@map("inventory_assignments")
+}
+
+// Material Request model
+model MaterialRequest {
+  id            String        @id @default(cuid())
+  team_id       String
+  item_name     String
+  description   String?
+  status        RequestStatus @default(pending)
+  requested_by  String
+  reviewed_by   String?
+  requested_at  DateTime      @default(now())
+  reviewed_at   DateTime?
+
+  // Relations
+  team          Team  @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  requester     User  @relation("RequestedBy", fields: [requested_by], references: [id])
+  reviewer      User? @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+
+  @@map("material_requests")
+}
+
+// Message model
+model Message {
+  id              String      @id @default(cuid())
+  conversation_id String
+  sender_id       String
+  content         String
+  message_type    MessageType @default(text)
+  file_path       String?
+  sent_at         DateTime    @default(now())
+
+  // Relations
+  conversation Conversation @relation(fields: [conversation_id], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+// Conversation model
+model Conversation {
+  id          String   @id @default(cuid())
+  participants Json
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  messages Message[]
+
+  @@map("conversations")
+}
+
+// Notification model
+model Notification {
+  id             String         @id @default(cuid())
+  title          String
+  message        String
+  sender_id      String
+  recipient_type RecipientType
+  recipient_id   String
+  read_status    Boolean        @default(false)
+  created_at     DateTime       @default(now())
+
+  // Relations
+  sender User @relation(fields: [sender_id], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// Announcement model
+model Announcement {
+  id         String   @id @default(cuid())
+  title      String
+  content    String
+  author_id  String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  author User @relation(fields: [author_id], references: [id], onDelete: Cascade)
+
+  @@map("announcements")
+}
