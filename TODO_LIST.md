@@ -81,60 +81,70 @@ This comprehensive TODO list outlines the complete backend development process f
 ## 🌐 Phase 3: Core API Endpoints
 
 ### 3.1 Teams Management API
-- [ ] GET `/api/teams` - List teams (role-filtered)
-- [ ] POST `/api/teams` - Create team (manager only)
-- [ ] GET `/api/teams/:id` - Get team details
-- [ ] PUT `/api/teams/:id` - Update team
-- [ ] DELETE `/api/teams/:id` - Delete team
-- [ ] GET `/api/teams/:id/members` - Get team members
-- [ ] POST `/api/teams/:id/members` - Add team member
-- [ ] PUT `/api/teams/:id/members/:memberId` - Update member
-- [ ] DELETE `/api/teams/:id/members/:memberId` - Remove member
+- [x] GET `/api/teams` - List teams (role-filtered)
+- [x] POST `/api/teams` - Create team (manager only)
+- [x] GET `/api/teams/:id` - Get team details
+- [x] PUT `/api/teams/:id` - Update team
+- [x] DELETE `/api/teams/:id` - Delete team
+- [x] GET `/api/teams/:id/members` - Get team members
+- [x] POST `/api/teams/:id/members` - Add team member
+- [x] DELETE `/api/teams/:id/members/:memberId` - Remove member
+- [ ] Test all team endpoints (requires MySQL server running)
 
 ### 3.2 Projects Management API
-- [ ] GET `/api/projects` - List projects (filtered by permissions)
-- [ ] POST `/api/projects` - Create project (incubator only)
-- [ ] GET `/api/projects/:id` - Get project details
-- [ ] PUT `/api/projects/:id` - Update project
-- [ ] DELETE `/api/projects/:id` - Delete project
-- [ ] POST `/api/projects/:id/files` - Upload project files
-- [ ] GET `/api/projects/:id/files` - Get project files
-- [ ] DELETE `/api/projects/:id/files/:fileId` - Delete file
+- [x] GET `/api/projects` - List projects (filtered by permissions)
+- [x] POST `/api/projects` - Create project (incubator only)
+- [x] GET `/api/projects/:id` - Get project details
+- [x] PUT `/api/projects/:id` - Update project
+- [x] DELETE `/api/projects/:id` - Delete project
+- [x] POST `/api/projects/:id/files` - Upload project files
+- [x] GET `/api/projects/:id/files` - Get project files
+- [x] DELETE `/api/projects/:id/files/:fileId` - Delete file
+- [ ] Test all project endpoints (requires MySQL server running)
 
 ### 3.3 Mentors Management API
-- [ ] GET `/api/mentors` - List mentors
-- [ ] POST `/api/mentors` - Create mentor
-- [ ] GET `/api/mentors/:id` - Get mentor details
-- [ ] PUT `/api/mentors/:id` - Update mentor
-- [ ] DELETE `/api/mentors/:id` - Delete mentor
-- [ ] POST `/api/mentors/:id/assign` - Assign mentor to team
-- [ ] DELETE `/api/mentors/:id/assign/:teamId` - Remove assignment
+- [x] GET `/api/mentors` - List mentors
+- [x] POST `/api/mentors` - Create mentor
+- [x] GET `/api/mentors/:id` - Get mentor details
+- [x] PUT `/api/mentors/:id` - Update mentor
+- [x] DELETE `/api/mentors/:id` - Delete mentor
+- [x] POST `/api/mentors/:id/assign` - Assign mentor to team
+- [x] DELETE `/api/mentors/:id/assign/:teamId` - Remove assignment
+- [x] GET `/api/mentors/:id/assignments` - Get mentor assignments
+- [ ] Test all mentor endpoints (requires MySQL server running)
 
 ### 3.4 Inventory Management API
-- [ ] GET `/api/inventory` - List inventory items
-- [ ] POST `/api/inventory` - Create inventory item
-- [ ] GET `/api/inventory/:id` - Get item details
-- [ ] PUT `/api/inventory/:id` - Update item
-- [ ] DELETE `/api/inventory/:id` - Delete item
-- [ ] POST `/api/inventory/:id/assign` - Assign to team
-- [ ] DELETE `/api/inventory/:id/assign/:teamId` - Unassign from team
+- [x] GET `/api/inventory` - List inventory items
+- [x] POST `/api/inventory` - Create inventory item
+- [x] GET `/api/inventory/:id` - Get item details
+- [x] PUT `/api/inventory/:id` - Update item
+- [x] DELETE `/api/inventory/:id` - Delete item
+- [x] POST `/api/inventory/:id/assign` - Assign to team
+- [x] DELETE `/api/inventory/:id/assign/:teamId` - Unassign from team
+- [x] GET `/api/inventory/:id/assignments` - Get item assignments
+- [ ] Test all inventory endpoints (requires MySQL server running)
 
 ### 3.5 Material Requests API
-- [ ] GET `/api/requests` - List requests
-- [ ] POST `/api/requests` - Create request
-- [ ] GET `/api/requests/:id` - Get request details
-- [ ] PUT `/api/requests/:id/status` - Update request status
+- [x] GET `/api/requests` - List material requests
+- [x] POST `/api/requests` - Create material request
+- [x] GET `/api/requests/:id` - Get request details
+- [x] PUT `/api/requests/:id/status` - Update request status
+- [x] DELETE `/api/requests/:id` - Delete request
+- [x] GET `/api/requests/team/:teamId` - Get team requests
+- [ ] Test all request endpoints (requires MySQL server running)
 
 ---
 
 ## 💬 Phase 4: Real-time Features & Communication
 
 ### 4.1 Messaging System
-- [ ] GET `/api/conversations` - List user conversations
-- [ ] POST `/api/conversations` - Create conversation
-- [ ] GET `/api/conversations/:id/messages` - Get conversation messages
-- [ ] POST `/api/conversations/:id/messages` - Send message
-- [ ] POST `/api/conversations/:id/messages/file` - Send file message
+- [x] GET `/api/conversations` - List user conversations
+- [x] POST `/api/conversations` - Create conversation
+- [x] GET `/api/conversations/:id` - Get conversation details
+- [x] GET `/api/conversations/:id/messages` - Get conversation messages
+- [x] POST `/api/conversations/:id/messages` - Send message
+- [x] POST `/api/conversations/:id/messages/file` - Send file message
+- [ ] Test all messaging endpoints (requires MySQL server running)
 
 ### 4.2 Socket.io Implementation
 - [ ] Set up Socket.io server

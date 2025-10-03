@@ -4,6 +4,12 @@ import helmet from 'helmet';
 import dotenv from 'dotenv';
 import prisma, { testConnection } from './config/database';
 import authRoutes from './routes/auth';
+import teamRoutes from './routes/teams';
+import projectRoutes from './routes/projects';
+import mentorRoutes from './routes/mentors';
+import inventoryRoutes from './routes/inventory';
+import requestRoutes from './routes/requests';
+import messageRoutes from './routes/messages';
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +28,12 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/teams', teamRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/mentors', mentorRoutes);
+app.use('/api/inventory', inventoryRoutes);
+app.use('/api/requests', requestRoutes);
+app.use('/api', messageRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -31,6 +43,12 @@ app.get('/', (req, res) => {
     status: 'Running',
     endpoints: {
       auth: '/api/auth',
+      teams: '/api/teams',
+      projects: '/api/projects',
+      mentors: '/api/mentors',
+      inventory: '/api/inventory',
+      requests: '/api/requests',
+      conversations: '/api/conversations',
       health: '/health'
     }
   });
