@@ -29,7 +29,11 @@
   "homepage": "https://github.com/amanifadhili/encubation_management_system_backend#readme",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.901.0",
     "@prisma/client": "^6.16.3",
+    "@types/joi": "^17.2.2",
+    "@types/multer-s3": "^3.0.3",
+    "@types/sharp": "^0.31.1",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
@@ -39,7 +43,9 @@
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
+    "multer-s3": "^3.0.1",
     "prisma": "^6.16.3",
+    "sharp": "^0.34.4",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

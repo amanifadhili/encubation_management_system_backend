@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Message, Conversation, Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import { emitToConversation, emitToUser } from '../services/socketService';
 
 interface CreateConversationRequest {
   participants: string[];
@@ -367,6 +368,29 @@ export class MessageController {
         data: { updated_at: new Date() }
       });
 
+      // Emit real-time message to conversation participants
+      emitToConversation(id, 'new_message', {
+        id: message.id,
+        conversationId: id,
+        sender: message.sender,
+        content: message.content,
+        messageType: message.message_type,
+        filePath: message.file_path,
+        sentAt: message.sent_at
+      });
+
+      // Send notifications to other participants
+      participants.forEach(participantId => {
+        if (participantId !== req.user!.userId) {
+          emitToUser(participantId, 'message_notification', {
+            conversationId: id,
+            sender: message.sender,
+            content: message.content,
+            messageType: message.message_type
+          });
+        }
+      });
+
       res.status(201).json({
         success: true,
         message: 'Message sent successfully',
@@ -459,6 +483,29 @@ export class MessageController {
       await prisma.conversation.update({
         where: { id },
         data: { updated_at: new Date() }
+      });
+
+      // Emit real-time message to conversation participants
+      emitToConversation(id, 'new_message', {
+        id: message.id,
+        conversationId: id,
+        sender: message.sender,
+        content: message.content,
+        messageType: message.message_type,
+        filePath: message.file_path,
+        sentAt: message.sent_at
+      });
+
+      // Send notifications to other participants
+      participants.forEach(participantId => {
+        if (participantId !== req.user!.userId) {
+          emitToUser(participantId, 'message_notification', {
+            conversationId: id,
+            sender: message.sender,
+            content: message.content,
+            messageType: message.message_type
+          });
+        }
       });
 
       res.status(201).json({
