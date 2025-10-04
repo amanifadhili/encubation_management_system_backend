@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { TeamController } from '../controllers/teamController';
 import { AuthMiddleware, requireManager, requireIncubator } from '../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../middleware/validation';
+import { teamSchemas, querySchemas } from '../utils/validation';
 
 const router = Router();
 
@@ -9,14 +11,14 @@ const router = Router();
  * @desc Get all teams (role-based filtering)
  * @access Private (Director, Manager, Mentor, Incubator)
  */
-router.get('/', AuthMiddleware.authenticate, TeamController.getAllTeams);
+router.get('/', AuthMiddleware.authenticate, validateQuery(querySchemas.teamFilters), TeamController.getAllTeams);
 
 /**
  * @route POST /api/teams
  * @desc Create new team
  * @access Private (Manager only)
  */
-router.post('/', AuthMiddleware.authenticate, requireManager, TeamController.createTeam);
+router.post('/', AuthMiddleware.authenticate, requireManager, validateBody(teamSchemas.create), TeamController.createTeam);
 
 /**
  * @route GET /api/teams/:id
@@ -30,7 +32,7 @@ router.get('/:id', AuthMiddleware.authenticate, TeamController.getTeamById);
  * @desc Update team
  * @access Private (Manager, Incubator team leader)
  */
-router.put('/:id', AuthMiddleware.authenticate, TeamController.updateTeam);
+router.put('/:id', AuthMiddleware.authenticate, validateBody(teamSchemas.update), TeamController.updateTeam);
 
 /**
  * @route DELETE /api/teams/:id
@@ -51,7 +53,7 @@ router.get('/:id/members', AuthMiddleware.authenticate, TeamController.getTeamMe
  * @desc Add member to team
  * @access Private (Incubator team leader only)
  */
-router.post('/:id/members', AuthMiddleware.authenticate, requireIncubator, TeamController.addMember);
+router.post('/:id/members', AuthMiddleware.authenticate, requireIncubator, validateBody(teamSchemas.addMember), TeamController.addMember);
 
 /**
  * @route DELETE /api/teams/:id/members/:memberId

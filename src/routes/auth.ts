@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/authController';
 import { AuthMiddleware } from '../middleware/auth';
+import { validateBody } from '../middleware/validation';
+import { authSchemas } from '../utils/validation';
 
 const router = Router();
 
@@ -9,7 +11,7 @@ const router = Router();
  * @desc User login
  * @access Public
  */
-router.post('/login', AuthController.login);
+router.post('/login', validateBody(authSchemas.login), AuthController.login);
 
 /**
  * @route POST /api/auth/logout

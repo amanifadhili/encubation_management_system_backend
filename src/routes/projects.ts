@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { ProjectController } from '../controllers/projectController';
 import { AuthMiddleware, requireIncubator } from '../middleware/auth';
+import { validateBody, validateQuery } from '../middleware/validation';
+import { projectSchemas, querySchemas } from '../utils/validation';
 import multer from 'multer';
 
 // Configure multer for file uploads
@@ -36,14 +38,14 @@ const router = Router();
  * @desc Get all projects (role-filtered)
  * @access Private (Director, Manager, Mentor, Incubator)
  */
-router.get('/', AuthMiddleware.authenticate, ProjectController.getAllProjects);
+router.get('/', AuthMiddleware.authenticate, validateQuery(querySchemas.projectFilters), ProjectController.getAllProjects);
 
 /**
  * @route POST /api/projects
  * @desc Create new project
  * @access Private (Incubator team leader only)
  */
-router.post('/', AuthMiddleware.authenticate, requireIncubator, ProjectController.createProject);
+router.post('/', AuthMiddleware.authenticate, requireIncubator, validateBody(projectSchemas.create), ProjectController.createProject);
 
 /**
  * @route GET /api/projects/:id
@@ -57,7 +59,7 @@ router.get('/:id', AuthMiddleware.authenticate, ProjectController.getProjectById
  * @desc Update project
  * @access Private (Incubator team leader, Manager, Director)
  */
-router.put('/:id', AuthMiddleware.authenticate, ProjectController.updateProject);
+router.put('/:id', AuthMiddleware.authenticate, validateBody(projectSchemas.update), ProjectController.updateProject);
 
 /**
  * @route DELETE /api/projects/:id

@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { UploadController } from '../controllers/uploadController';
 import { AuthMiddleware } from '../middleware/auth';
 import { upload, uploadImages, uploadDocuments } from '../middleware/upload';
+import { validateQuery, validateBody } from '../middleware/validation';
+import { uploadSchemas } from '../utils/validation';
 
 const router = Router();
 
@@ -73,14 +75,14 @@ router.get('/stats', AuthMiddleware.authenticate, UploadController.getUploadStat
  * @desc Search files
  * @access Private
  */
-router.get('/search', AuthMiddleware.authenticate, UploadController.searchFiles);
+router.get('/search', AuthMiddleware.authenticate, validateQuery(uploadSchemas.search), UploadController.searchFiles);
 
 /**
  * @route POST /api/upload/batch-delete
  * @desc Batch delete files
  * @access Private
  */
-router.post('/batch-delete', AuthMiddleware.authenticate, UploadController.batchDeleteFiles);
+router.post('/batch-delete', AuthMiddleware.authenticate, validateBody(uploadSchemas.batchDelete), UploadController.batchDeleteFiles);
 
 /**
  * @route GET /api/upload/projects/:projectId/files

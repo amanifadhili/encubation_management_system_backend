@@ -1,11 +1,11 @@
 import express from 'express';
 import { createServer } from 'http';
-import cors from 'cors';
-import helmet from 'helmet';
 import dotenv from 'dotenv';
 import prisma, { testConnection } from './config/database';
 import { SocketHandler } from './socket/socketHandler';
 import { setSocketHandler } from './services/socketService';
+import { SecurityMiddleware } from './config/security';
+import { errorHandler, notFoundHandler, requestLogger, healthCheck } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
 import teamRoutes from './routes/teams';
 import projectRoutes from './routes/projects';
@@ -29,14 +29,17 @@ const PORT = process.env.PORT || 3001;
 const socketHandler = new SocketHandler(server);
 setSocketHandler(socketHandler);
 
-// Middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  credentials: true
-}));
+// Security Middleware
+SecurityMiddleware.applySecurity(app);
+
+// Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Request logging (development only)
+if (process.env.NODE_ENV === 'development') {
+  app.use(requestLogger);
+}
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -75,23 +78,13 @@ app.get('/', (req, res) => {
 });
 
 // Health check
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    database: 'Connected',
-    version: '1.0.0'
-  });
-});
+app.get('/health', healthCheck);
 
 // 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'Endpoint not found',
-    path: req.originalUrl
-  });
-});
+app.use(notFoundHandler);
+
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // Start server
 const startServer = async () => {
