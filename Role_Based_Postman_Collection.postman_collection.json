@@ -1028,9 +1028,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{base_url}}/../health",
-              "host": ["{{base_url}}"],
-              "path": ["..", "health"]
+              "raw": "http://localhost:3001/health",
+              "host": ["localhost:3001"],
+              "path": ["health"]
             },
             "description": "**Public Access**: Check system health and status\n\n**No Authentication Required**\n\n**Response Example:**\n```json\n{\n  \"success\": true,\n  \"status\": \"healthy\",\n  \"timestamp\": \"2024-01-01T12:00:00Z\",\n  \"version\": \"1.0.0\",\n  \"services\": {\n    \"database\": \"connected\",\n    \"redis\": \"connected\",\n    \"fileStorage\": \"available\"\n  }\n}\n```"
           },
@@ -1042,7 +1042,7 @@
                   "pm.test(\"System health check\", function () {",
                   "    var jsonData = pm.response.json();",
                   "    pm.expect(jsonData.success).to.eql(true);",
-                  "    pm.expect(jsonData.status).to.eql('healthy');",
+                  "    pm.expect(jsonData.message).to.eql('Server is healthy');",
                   "    pm.expect(pm.response.code).to.eql(200);",
                   "});"
                 ],

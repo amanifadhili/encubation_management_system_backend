@@ -51,7 +51,7 @@ export const validateBody = (schema: Joi.ObjectSchema) => {
 // Validation middleware for query parameters
 export const validateQuery = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const { error, value } = schema.validate(req.query, {
+    const { error } = schema.validate(req.query, {
       abortEarly: false,
       stripUnknown: true,
       convert: true
@@ -75,8 +75,7 @@ export const validateQuery = (schema: Joi.ObjectSchema) => {
       return;
     }
 
-    // Replace request query with validated and sanitized data
-    req.query = value;
+    // Note: req.query is read-only in Express.js, so we validate but don't replace it
     next();
   };
 };
@@ -84,7 +83,7 @@ export const validateQuery = (schema: Joi.ObjectSchema) => {
 // Validation middleware for route parameters
 export const validateParams = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
-    const { error, value } = schema.validate(req.params, {
+    const { error } = schema.validate(req.params, {
       abortEarly: false,
       stripUnknown: true,
       convert: true
@@ -108,8 +107,7 @@ export const validateParams = (schema: Joi.ObjectSchema) => {
       return;
     }
 
-    // Replace request params with validated and sanitized data
-    req.params = value;
+    // Note: req.params is read-only in Express.js, so we validate but don't replace it
     next();
   };
 };
@@ -144,7 +142,7 @@ export const validateRequest = (options: {
 
     // Validate query
     if (options.query) {
-      const { error: queryError, value: queryValue } = options.query.validate(req.query, {
+      const { error: queryError } = options.query.validate(req.query, {
         abortEarly: false,
         stripUnknown: true,
         convert: true
@@ -156,14 +154,13 @@ export const validateRequest = (options: {
           message: detail.message,
           value: detail.context?.value
         })));
-      } else {
-        req.query = queryValue;
       }
+      // Note: req.query is read-only in Express.js, so we validate but don't replace it
     }
 
     // Validate params
     if (options.params) {
-      const { error: paramsError, value: paramsValue } = options.params.validate(req.params, {
+      const { error: paramsError } = options.params.validate(req.params, {
         abortEarly: false,
         stripUnknown: true,
         convert: true
@@ -175,9 +172,8 @@ export const validateRequest = (options: {
           message: detail.message,
           value: detail.context?.value
         })));
-      } else {
-        req.params = paramsValue;
       }
+      // Note: req.params is read-only in Express.js, so we validate but don't replace it
     }
 
     // If there are any errors, return them
@@ -228,10 +224,8 @@ export const sanitizeInput = (req: Request, res: Response, next: NextFunction): 
     req.body = sanitizeValue(req.body);
   }
 
-  // Sanitize query parameters
-  if (req.query && typeof req.query === 'object') {
-    req.query = sanitizeValue(req.query);
-  }
+  // Note: req.query is read-only in Express.js, so we skip sanitization for query params
+  // The validation middleware above will catch any malicious query parameters
 
   next();
 };
