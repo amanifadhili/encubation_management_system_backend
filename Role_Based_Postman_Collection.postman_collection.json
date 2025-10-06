@@ -1,0 +1,1074 @@
+{
+  "info": {
+    "name": "🚀 Incubation Management System - ROLE-BASED API Collection",
+    "description": "Complete, production-ready Postman collection organized by user roles. Each folder contains endpoints accessible to that specific role, making it easy to test role-based access control.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "2.0.0",
+    "_exporter_id": "incubation-system"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api",
+      "type": "string",
+      "description": "Base URL for API endpoints - Change to your deployed URL"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string",
+      "description": "JWT token automatically set after login"
+    },
+    {
+      "key": "test_team_id",
+      "value": "",
+      "type": "string",
+      "description": "Test team ID for operations"
+    },
+    {
+      "key": "test_project_id",
+      "value": "",
+      "type": "string",
+      "description": "Test project ID for operations"
+    },
+    {
+      "key": "test_mentor_id",
+      "value": "",
+      "type": "string",
+      "description": "Test mentor ID for operations"
+    },
+    {
+      "key": "test_inventory_id",
+      "value": "",
+      "type": "string",
+      "description": "Test inventory ID for operations"
+    },
+    {
+      "key": "test_request_id",
+      "value": "",
+      "type": "string",
+      "description": "Test request ID for operations"
+    },
+    {
+      "key": "director_email",
+      "value": "director@university.edu",
+      "type": "string",
+      "description": "Director test account"
+    },
+    {
+      "key": "director_password",
+      "value": "director123",
+      "type": "string",
+      "description": "Director password"
+    },
+    {
+      "key": "manager_email",
+      "value": "manager@university.edu",
+      "type": "string",
+      "description": "Manager test account"
+    },
+    {
+      "key": "manager_password",
+      "value": "manager123",
+      "type": "string",
+      "description": "Manager password"
+    },
+    {
+      "key": "incubator_email",
+      "value": "innovatex@teams.com",
+      "type": "string",
+      "description": "Incubator test account"
+    },
+    {
+      "key": "incubator_password",
+      "value": "team123",
+      "type": "string",
+      "description": "Incubator password"
+    },
+    {
+      "key": "mentor_email",
+      "value": "mentor@university.edu",
+      "type": "string",
+      "description": "Mentor test account"
+    },
+    {
+      "key": "mentor_password",
+      "value": "mentor123",
+      "type": "string",
+      "description": "Mentor password"
+    }
+  ],
+  "item": [
+    {
+      "name": "🔐 AUTHENTICATION - START HERE",
+      "description": "Login with different user roles to test role-based access control",
+      "item": [
+        {
+          "name": "🎯 Login as Director (Full Access)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "description": "Request body format"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{director_email}}\",\n  \"password\": \"{{director_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "**Director Role**: Full system access\n- View all teams, projects, reports\n- Manage mentors and announcements\n- Access comprehensive analytics\n\n**Test Account**: director@university.edu / director123"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Director login successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user.role).to.eql('director');",
+                  "    pm.expect(jsonData.token).to.be.a('string');",
+                  "});",
+                  "",
+                  "// Auto-save token for subsequent requests",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwt_token', jsonData.token);",
+                  "pm.collectionVariables.set('current_user', JSON.stringify(jsonData.user));",
+                  "",
+                  "pm.test(\"Token saved for future requests\", function () {",
+                  "    pm.expect(pm.collectionVariables.get('jwt_token')).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "👔 Login as Manager (Operational Management)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{manager_email}}\",\n  \"password\": \"{{manager_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "**Manager Role**: Operational management\n- Manage assigned teams (CRUD)\n- Approve/decline material requests\n- Send notifications to teams\n- Manage inventory and generate reports\n\n**Test Account**: manager@university.edu / manager123"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Manager login successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user.role).to.eql('manager');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwt_token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "🚀 Login as Incubator (Team Operations)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{incubator_email}}\",\n  \"password\": \"{{incubator_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "**Incubator Role**: Team-focused operations\n- Manage team members and projects\n- Request materials from managers\n- View announcements and notifications\n- Communicate with mentors\n\n**Test Account**: innovatex@teams.com / team123"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Incubator login successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user.role).to.eql('incubator');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwt_token', jsonData.token);",
+                  "pm.collectionVariables.set('test_team_id', jsonData.user.teamId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "🎓 Login as Mentor (Team Guidance)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{mentor_email}}\",\n  \"password\": \"{{mentor_password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "**Mentor Role**: Team-specific guidance\n- View assigned teams and projects\n- Monitor team progress\n- Communicate with assigned teams\n- Access team-specific analytics\n\n**Test Account**: mentor@university.edu / mentor123"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Mentor login successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user.role).to.eql('mentor');",
+                  "});",
+                  "",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwt_token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "👤 Get Current User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get current authenticated user information\n\n**Response Example:**\n```json\n{\n  \"success\": true,\n  \"user\": {\n    \"id\": 1,\n    \"name\": \"Director Name\",\n    \"email\": \"director@university.edu\",\n    \"role\": \"director\"\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns current user data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user).to.be.an('object');",
+                  "    pm.expect(jsonData.user.email).to.be.a('string');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "🚪 Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            },
+            "description": "Logout current user and invalidate session\n\n**Response Example:**\n```json\n{\n  \"success\": true,\n  \"message\": \"Logged out successfully\"\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Logout successful\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "// Clear token after logout",
+                  "pm.collectionVariables.set('jwt_token', '');"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🎯 DIRECTOR - FULL SYSTEM ACCESS",
+      "description": "Complete access to all system features and data",
+      "item": [
+        {
+          "name": "📊 Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/dashboard/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "dashboard", "analytics"]
+            },
+            "description": "**Director Access**: Complete system overview\n\n**Response**: System-wide statistics and charts"
+          }
+        },
+        {
+          "name": "👥 View All Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams?status=active&page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["teams"],
+              "query": [
+                {"key": "status", "value": "active"},
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Director Access**: View all teams in the system"
+          }
+        },
+        {
+          "name": "📁 View All Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["projects"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Director Access**: View all projects across all teams"
+          }
+        },
+        {
+          "name": "🎓 View All Mentors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mentors?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["mentors"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Director Access**: View all mentors and their assignments"
+          }
+        },
+        {
+          "name": "📦 View All Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/inventory?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["inventory"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Director Access**: View all inventory items and assignments"
+          }
+        },
+        {
+          "name": "📋 View All Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/requests?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["requests"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Director Access**: View all material requests"
+          }
+        },
+        {
+          "name": "📊 Generate All Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/teams",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "teams"]
+            },
+            "description": "**Director Access**: Generate comprehensive reports"
+          }
+        },
+        {
+          "name": "📢 Create Announcements",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Important System Update\",\n  \"content\": \"System maintenance scheduled for this weekend.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/announcements",
+              "host": ["{{base_url}}"],
+              "path": ["announcements"]
+            },
+            "description": "**Director Access**: Create system-wide announcements"
+          }
+        },
+        {
+          "name": "💬 View All Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/conversations?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["conversations"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Director Access**: View all messaging conversations"
+          }
+        }
+      ]
+    },
+    {
+      "name": "👔 MANAGER - OPERATIONAL MANAGEMENT",
+      "description": "Manage teams, inventory, requests, and operational oversight",
+      "item": [
+        {
+          "name": "📊 Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/dashboard/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "dashboard", "analytics"]
+            },
+            "description": "**Manager Access**: Operational dashboard overview"
+          }
+        },
+        {
+          "name": "➕ Create New Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_name\": \"GreenTech Innovations\",\n  \"company_name\": \"GreenTech Solutions Ltd\",\n  \"credentials\": {\n    \"email\": \"greentech@teams.com\",\n    \"password\": \"greentech123\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/teams",
+              "host": ["{{base_url}}"],
+              "path": ["teams"]
+            },
+            "description": "**Manager Access**: Create new incubation teams"
+          }
+        },
+        {
+          "name": "👥 Manage Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["teams"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Manager Access**: View and manage all teams"
+          }
+        },
+        {
+          "name": "🎓 Create New Mentor",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Prof. Michael Chen\",\n  \"email\": \"michael@university.edu\",\n  \"expertise\": \"Sustainable Energy Systems\",\n  \"phone\": \"+1-555-0456\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mentors",
+              "host": ["{{base_url}}"],
+              "path": ["mentors"]
+            },
+            "description": "**Manager Access**: Add new mentors to the system"
+          }
+        },
+        {
+          "name": "🎓 Manage Mentors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mentors?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["mentors"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Manager Access**: View and manage all mentors"
+          }
+        },
+        {
+          "name": "➕ Create Inventory Item",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Arduino Starter Kit\",\n  \"description\": \"Complete Arduino Uno starter kit with sensors\",\n  \"total_quantity\": 10,\n  \"status\": \"available\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory",
+              "host": ["{{base_url}}"],
+              "path": ["inventory"]
+            },
+            "description": "**Manager Access**: Add new inventory items"
+          }
+        },
+        {
+          "name": "📦 Manage Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/inventory?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["inventory"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Manager Access**: View and manage all inventory"
+          }
+        },
+        {
+          "name": "📋 Approve Requests",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"notes\": \"Approved for 3-day access. Please coordinate with lab technician.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/requests/{{test_request_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["requests", "{{test_request_id}}", "status"]
+            },
+            "description": "**Manager Access**: Approve or decline material requests"
+          }
+        },
+        {
+          "name": "📋 View All Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/requests?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["requests"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Manager Access**: View all material requests for approval"
+          }
+        },
+        {
+          "name": "📢 Create Notifications",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Important Update\",\n  \"message\": \"Please review the new project guidelines.\",\n  \"recipient_type\": \"team\",\n  \"recipient_id\": {{test_team_id}}\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/notifications",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"]
+            },
+            "description": "**Manager Access**: Send notifications to teams"
+          }
+        },
+        {
+          "name": "📊 Generate Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/teams",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "teams"]
+            },
+            "description": "**Manager Access**: Generate operational reports"
+          }
+        },
+        {
+          "name": "💬 Team Communications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/conversations?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["conversations"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Manager Access**: View team communication channels"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🚀 INCUBATOR - TEAM OPERATIONS",
+      "description": "Manage your team's projects, members, and resources",
+      "item": [
+        {
+          "name": "👤 My Team Details",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams/{{test_team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{test_team_id}}"]
+            },
+            "description": "**Incubator Access**: View your team's information"
+          }
+        },
+        {
+          "name": "👥 Manage Team Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams/{{test_team_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{test_team_id}}", "members"]
+            },
+            "description": "**Incubator Access**: View and manage your team members"
+          }
+        },
+        {
+          "name": "➕ Add Team Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"New Member\",\n  \"email\": \"newmember@team.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/teams/{{test_team_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{test_team_id}}", "members"]
+            },
+            "description": "**Incubator Access**: Add new members to your team"
+          }
+        },
+        {
+          "name": "➕ Create Project",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"AI-Powered Health Monitor\",\n  \"description\": \"Wearable device for real-time health monitoring\",\n  \"category\": \"Health\",\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects",
+              "host": ["{{base_url}}"],
+              "path": ["projects"]
+            },
+            "description": "**Incubator Access**: Create new projects for your team"
+          }
+        },
+        {
+          "name": "📁 My Team Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["projects"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Incubator Access**: View your team's projects"
+          }
+        },
+        {
+          "name": "📝 Update Project Progress",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"progress\": 75,\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{test_project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{test_project_id}}"]
+            },
+            "description": "**Incubator Access**: Update your project's progress"
+          }
+        },
+        {
+          "name": "📎 Upload Project Files",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": [],
+                  "description": "Select files to upload (PDF, DOC, JPG, PNG, max 10MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{test_project_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{test_project_id}}", "files"]
+            },
+            "description": "**Incubator Access**: Upload files to your projects"
+          }
+        },
+        {
+          "name": "📋 Request Materials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_name\": \"Laser Cutter Access\",\n  \"description\": \"Need access to laser cutter for 3 days to prototype our design\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/requests",
+              "host": ["{{base_url}}"],
+              "path": ["requests"]
+            },
+            "description": "**Incubator Access**: Request materials or equipment from managers"
+          }
+        },
+        {
+          "name": "📋 My Team Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/requests/team/{{test_team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["requests", "team", "{{test_team_id}}"]
+            },
+            "description": "**Incubator Access**: View your team's material requests"
+          }
+        },
+        {
+          "name": "📦 View Available Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/inventory?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["inventory"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Incubator Access**: View available inventory items"
+          }
+        },
+        {
+          "name": "🔔 My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/notifications?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["notifications"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Incubator Access**: View notifications from managers"
+          }
+        },
+        {
+          "name": "📢 View Announcements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/announcements?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["announcements"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Incubator Access**: View system announcements"
+          }
+        },
+        {
+          "name": "💬 Team Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/conversations?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["conversations"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Incubator Access**: Communicate with mentors and team members"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎓 MENTOR - TEAM GUIDANCE",
+      "description": "Guide assigned teams and monitor their progress",
+      "item": [
+        {
+          "name": "👥 My Assigned Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mentors/assignments",
+              "host": ["{{base_url}}"],
+              "path": ["mentors", "assignments"]
+            },
+            "description": "**Mentor Access**: View teams assigned to you for guidance"
+          }
+        },
+        {
+          "name": "📁 Assigned Team Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["projects"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Mentor Access**: View projects from your assigned teams"
+          }
+        },
+        {
+          "name": "📊 Project Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/projects",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "projects"]
+            },
+            "description": "**Mentor Access**: Generate reports on assigned team projects"
+          }
+        },
+        {
+          "name": "📊 Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/dashboard/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "dashboard", "analytics"]
+            },
+            "description": "**Mentor Access**: View analytics for assigned teams"
+          }
+        },
+        {
+          "name": "💬 Mentor Conversations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/conversations?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["conversations"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Mentor Access**: Communicate with your assigned teams"
+          }
+        }
+      ]
+    },
+    {
+      "name": "🌐 PUBLIC ACCESS",
+      "description": "Endpoints accessible without authentication",
+      "item": [
+        {
+          "name": "💚 System Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/../health",
+              "host": ["{{base_url}}"],
+              "path": ["..", "health"]
+            },
+            "description": "**Public Access**: Check system health and status\n\n**No Authentication Required**\n\n**Response Example:**\n```json\n{\n  \"success\": true,\n  \"status\": \"healthy\",\n  \"timestamp\": \"2024-01-01T12:00:00Z\",\n  \"version\": \"1.0.0\",\n  \"services\": {\n    \"database\": \"connected\",\n    \"redis\": \"connected\",\n    \"fileStorage\": \"available\"\n  }\n}\n```"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"System health check\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.status).to.eql('healthy');",
+                  "    pm.expect(pm.response.code).to.eql(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "📢 Public Announcements",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/announcements?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["announcements"],
+              "query": [
+                {"key": "page", "value": "1"},
+                {"key": "limit", "value": "10"}
+              ]
+            },
+            "description": "**Public Access**: View public announcements\n\n**No Authentication Required**\n\n**Response Example:**\n```json\n{\n  \"success\": true,\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Welcome to Incubation Program\",\n      \"content\": \"Welcome to our incubation program!\",\n      \"authorName\": \"Director Name\",\n      \"createdAt\": \"2024-01-01T00:00:00Z\"\n    }\n  ]\n}\n```"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "id": "test-environment",
+  "name": "Incubation Management System - Test Environment",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api",
+      "description": "Base URL for API endpoints",
+      "enabled": true
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "description": "JWT token for authenticated requests",
+      "enabled": true
+    },
+    {
+      "key": "test_team_id",
+      "value": "",
+      "description": "Test team ID for operations",
+      "enabled": true
+    },
+    {
+      "key": "test_project_id",
+      "value": "",
+      "description": "Test project ID for operations",
+      "enabled": true
+    },
+    {
+      "key": "test_mentor_id",
+      "value": "",
+      "description": "Test mentor ID for operations",
+      "enabled": true
+    },
+    {
+      "key": "test_inventory_id",
+      "value": "",
+      "description": "Test inventory ID for operations",
+      "enabled": true
+    },
+    {
+      "key": "test_request_id",
+      "value": "",
+      "description": "Test request ID for operations",
+      "enabled": true
+    },
+    {
+      "key": "director_email",
+      "value": "director@university.edu",
+      "description": "Director test account email",
+      "enabled": true
+    },
+    {
+      "key": "director_password",
+      "value": "director123",
+      "description": "Director test account password",
+      "enabled": true
+    },
+    {
+      "key": "manager_email",
+      "value": "manager@university.edu",
+      "description": "Manager test account email",
+      "enabled": true
+    },
+    {
+      "key": "manager_password",
+      "value": "manager123",
+      "description": "Manager test account password",
+      "enabled": true
+    },
+    {
+      "key": "incubator_email",
+      "value": "innovatex@teams.com",
+      "description": "Incubator test account email",
+      "enabled": true
+    },
+    {
+      "key": "incubator_password",
+      "value": "team123",
+      "description": "Incubator test account password",
+      "enabled": true
+    },
+    {
+      "key": "mentor_email",
+      "value": "mentor@university.edu",
+      "description": "Mentor test account email",
+      "enabled": true
+    },
+    {
+      "key": "mentor_password",
+      "value": "mentor123",
+      "description": "Mentor test account password",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment"
+}

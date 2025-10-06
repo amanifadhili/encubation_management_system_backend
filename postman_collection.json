@@ -1,0 +1,1325 @@
+{
+  "info": {
+    "name": "Incubation Management System API",
+    "description": "Complete API collection for testing the Incubation Management System backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001/api",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_team_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_project_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_mentor_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_inventory_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "test_request_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login - Director",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"director@university.edu\",\n  \"password\": \"director123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has success true\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has token\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.token).to.be.a('string');",
+                  "    pm.expect(jsonData.token.length).to.be.greaterThan(0);",
+                  "});",
+                  "",
+                  "pm.test(\"Response has user data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.user).to.be.an('object');",
+                  "    pm.expect(jsonData.user.role).to.eql('director');",
+                  "});",
+                  "",
+                  "// Set token for subsequent requests",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('jwt_token', jsonData.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Manager",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"manager@university.edu\",\n  \"password\": \"manager123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Manager login successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user.role).to.eql('manager');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login - Incubator",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"innovatex@teams.com\",\n  \"password\": \"team123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Incubator login successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user.role).to.eql('incubator');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "me"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns current user data\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.user).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "logout"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Logout successful\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Team Management",
+      "item": [
+        {
+          "name": "Get All Teams",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams?status=active",
+              "host": ["{{base_url}}"],
+              "path": ["teams"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "active"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns teams array\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Store first team ID for other tests",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    pm.collectionVariables.set('test_team_id', jsonData.data[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Team (Manager Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_name\": \"Postman Test Team\",\n  \"company_name\": \"Postman Corp\",\n  \"credentials\": {\n    \"email\": \"postman@team.com\",\n    \"password\": \"postman123\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/teams",
+              "host": ["{{base_url}}"],
+              "path": ["teams"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Team created successfully\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data.team_name).to.eql('Postman Test Team');",
+                  "});",
+                  "",
+                  "// Store created team ID",
+                  "var jsonData = pm.response.json();",
+                  "pm.collectionVariables.set('test_team_id', jsonData.data.id);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Team by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams/{{test_team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{test_team_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns team data\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data.id).to.eql(pm.collectionVariables.get('test_team_id'));",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Team",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_name\": \"Updated Postman Team\",\n  \"status\": \"pending\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/teams/{{test_team_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{test_team_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Team updated successfully\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data.team_name).to.eql('Updated Postman Team');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        // Expected for non-manager roles",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Team Members",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams/{{test_team_id}}/members",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "{{test_team_id}}", "members"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns team members\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Project Management",
+      "item": [
+        {
+          "name": "Get All Projects",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects?category=Technology",
+              "host": ["{{base_url}}"],
+              "path": ["projects"],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "Technology"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns projects array\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Store first project ID",
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.data && jsonData.data.length > 0) {",
+                  "    pm.collectionVariables.set('test_project_id', jsonData.data[0].id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Project (Incubator Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Project\",\n  \"description\": \"Testing project creation via Postman\",\n  \"category\": \"Technology\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects",
+              "host": ["{{base_url}}"],
+              "path": ["projects"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Project creation response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data.name).to.eql('Postman Test Project');",
+                  "        pm.collectionVariables.set('test_project_id', jsonData.data.id);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Project by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{test_project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{test_project_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns project data\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data.id).to.eql(pm.collectionVariables.get('test_project_id'));",
+                  "    } else if (pm.response.code === 404) {",
+                  "        pm.expect(jsonData.code).to.eql('NOT_FOUND');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Project",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"progress\": 75,\n  \"status\": \"active\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{test_project_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{test_project_id}}"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Project update response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload Project File",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/projects/{{test_project_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{test_project_id}}", "files"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"File upload response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Project Files",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/projects/{{test_project_id}}/files",
+              "host": ["{{base_url}}"],
+              "path": ["projects", "{{test_project_id}}", "files"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns project files\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Mentor Management",
+      "item": [
+        {
+          "name": "Get All Mentors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/mentors",
+              "host": ["{{base_url}}"],
+              "path": ["mentors"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns mentors array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "        if (jsonData.data.length > 0) {",
+                  "            pm.collectionVariables.set('test_mentor_id', jsonData.data[0].id);",
+                  "        }",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Mentor (Manager Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Postman Mentor\",\n  \"email\": \"postman.mentor@university.edu\",\n  \"expertise\": \"AI and Machine Learning\",\n  \"phone\": \"+1-555-POST\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mentors",
+              "host": ["{{base_url}}"],
+              "path": ["mentors"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Mentor creation response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.collectionVariables.set('test_mentor_id', jsonData.data.id);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Mentor to Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_id\": \"{{test_team_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/mentors/{{test_mentor_id}}/assign",
+              "host": ["{{base_url}}"],
+              "path": ["mentors", "{{test_mentor_id}}", "assign"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Mentor assignment response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventory Management",
+      "item": [
+        {
+          "name": "Get All Inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/inventory",
+              "host": ["{{base_url}}"],
+              "path": ["inventory"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns inventory array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "        if (jsonData.data.length > 0) {",
+                  "            pm.collectionVariables.set('test_inventory_id', jsonData.data[0].id);",
+                  "        }",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Inventory Item (Manager Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Laptop\",\n  \"description\": \"High-end development laptop\",\n  \"total_quantity\": 5,\n  \"status\": \"available\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory",
+              "host": ["{{base_url}}"],
+              "path": ["inventory"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Inventory creation response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.collectionVariables.set('test_inventory_id', jsonData.data.id);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Assign Inventory to Team",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_id\": \"{{test_team_id}}\",\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/inventory/{{test_inventory_id}}/assign",
+              "host": ["{{base_url}}"],
+              "path": ["inventory", "{{test_inventory_id}}", "assign"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Inventory assignment response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Material Requests",
+      "item": [
+        {
+          "name": "Get All Requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/requests",
+              "host": ["{{base_url}}"],
+              "path": ["requests"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns requests array\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "        if (jsonData.data.length > 0) {",
+                  "            pm.collectionVariables.set('test_request_id', jsonData.data[0].id);",
+                  "        }",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Material Request (Incubator Only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"item_name\": \"Additional Monitors\",\n  \"description\": \"Need 2 additional monitors for development workstations\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/requests",
+              "host": ["{{base_url}}"],
+              "path": ["requests"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Request creation response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 201) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.collectionVariables.set('test_request_id', jsonData.data.id);",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Request Status (Manager Only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"approved\",\n  \"notes\": \"Approved for Q1 development needs\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/requests/{{test_request_id}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["requests", "{{test_request_id}}", "status"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Request status update response\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data.status).to.eql('approved');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Reports & Analytics",
+      "item": [
+        {
+          "name": "Get Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dashboard/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["dashboard", "analytics"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns dashboard analytics\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(true);",
+                  "    pm.expect(jsonData.data).to.have.property('summary');",
+                  "    pm.expect(jsonData.data).to.have.property('charts');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Team Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/teams",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "teams"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns team reports\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Project Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/projects",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "projects"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns project reports\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Inventory Reports",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/reports/inventory",
+              "host": ["{{base_url}}"],
+              "path": ["reports", "inventory"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns inventory reports\", function () {",
+                  "    var jsonData = pm.response.json();",
+                  "    if (pm.response.code === 200) {",
+                  "        pm.expect(jsonData.success).to.eql(true);",
+                  "        pm.expect(jsonData.data).to.be.an('array');",
+                  "    } else if (pm.response.code === 403) {",
+                  "        pm.expect(jsonData.code).to.eql('INSUFFICIENT_PERMISSIONS');",
+                  "    }",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "item": [
+        {
+          "name": "Invalid Login Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invalid@example.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns authentication error\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "    pm.expect(jsonData.code).to.eql('AUTHENTICATION_FAILED');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Access Without Authentication",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams",
+              "host": ["{{base_url}}"],
+              "path": ["teams"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns unauthorized error\", function () {",
+                  "    pm.response.to.have.status(401);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "    pm.expect(jsonData.code).to.eql('INVALID_TOKEN');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Access Non-existent Resource",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/teams/non-existent-id",
+              "host": ["{{base_url}}"],
+              "path": ["teams", "non-existent-id"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns not found error\", function () {",
+                  "    pm.response.to.have.status(404);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "    pm.expect(jsonData.code).to.eql('NOT_FOUND');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid Request Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"team_name\": \"\",\n  \"company_name\": \"Test Company\",\n  \"credentials\": {\n    \"email\": \"invalid-email\",\n    \"password\": \"123\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/teams",
+              "host": ["{{base_url}}"],
+              "path": ["teams"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Returns validation error\", function () {",
+                  "    pm.response.to.have.status(400);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.success).to.eql(false);",
+                  "    pm.expect(jsonData.code).to.eql('VALIDATION_ERROR');",
+                  "    pm.expect(jsonData.errors).to.be.an('array');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "System Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/../health",
+              "host": ["{{base_url}}"],
+              "path": ["..", "health"]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"System health check\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql('OK');",
+                  "    pm.expect(jsonData).to.have.property('timestamp');",
+                  "    pm.expect(jsonData).to.have.property('database');",
+                  "    pm.expect(jsonData).to.have.property('version');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global pre-request script",
+          "// Add any global setup here"
+        ]
+      }
+    }
+  ]
+}

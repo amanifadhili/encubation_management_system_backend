@@ -1,0 +1,16 @@
+{
+  "collection": "postman_collection.json",
+  "environment": "test_environment.json",
+  "reporters": ["cli", "json", "html"],
+  "reporter-json-export": "test-results.json",
+  "reporter-html-export": "test-results.html",
+  "timeout": 30000,
+  "delayRequest": 1000,
+  "bail": false,
+  "suppressExitCode": false,
+  "ignoreRedirects": false,
+  "insecure": false,
+  "color": true,
+  "disableUnicode": false,
+  "verbose": true
+}
