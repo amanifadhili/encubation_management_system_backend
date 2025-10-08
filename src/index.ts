@@ -7,6 +7,7 @@ import { setSocketHandler } from './services/socketService';
 import { SecurityMiddleware } from './config/security';
 import { errorHandler, notFoundHandler, requestLogger, healthCheck } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
+import userRoutes from './routes/users';
 import teamRoutes from './routes/teams';
 import projectRoutes from './routes/projects';
 import mentorRoutes from './routes/mentors';
@@ -16,6 +17,7 @@ import messageRoutes from './routes/messages';
 import notificationRoutes from './routes/notifications';
 import announcementRoutes from './routes/announcements';
 import reportsRoutes from './routes/reports';
+import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
 
 // Load environment variables
@@ -43,6 +45,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
 app.use('/api/teams', teamRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/mentors', mentorRoutes);
@@ -51,6 +54,7 @@ app.use('/api/requests', requestRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/reports', reportsRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api', messageRoutes);
 
@@ -62,6 +66,7 @@ app.get('/', (req, res) => {
     status: 'Running',
     endpoints: {
       auth: '/api/auth',
+      users: '/api/users',
       teams: '/api/teams',
       projects: '/api/projects',
       mentors: '/api/mentors',

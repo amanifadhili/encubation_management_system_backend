@@ -125,7 +125,7 @@ const defaultConfig: SecurityConfig = {
 
   authRateLimit: {
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // Limit each IP to 5 login attempts per windowMs
+    max: process.env.NODE_ENV === 'development' ? 20 : 5, // More lenient in development
     message: JSON.stringify({
       success: false,
       message: 'Too many login attempts, please try again later.',
@@ -224,6 +224,12 @@ export class SecurityMiddleware {
    * Apply rate limiting
    */
   private static applyRateLimiting(app: Application): void {
+    // Skip rate limiting in development mode for easier testing
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔧 Rate limiting disabled in development mode');
+      return;
+    }
+
     // General API rate limiting
     app.use('/api/', rateLimit(this.config.rateLimit));
 
