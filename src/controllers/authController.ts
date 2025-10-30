@@ -37,6 +37,7 @@ export class AuthController {
         res.status(400).json({
           success: false,
           message: 'Email and password are required',
+          code: 'MISSING_CREDENTIALS'
         } as AuthResponse);
         return;
       }
@@ -50,6 +51,7 @@ export class AuthController {
         res.status(401).json({
           success: false,
           message: 'Invalid email or password',
+          code: 'INVALID_CREDENTIALS'
         } as AuthResponse);
         return;
       }
@@ -61,6 +63,7 @@ export class AuthController {
         res.status(401).json({
           success: false,
           message: 'Invalid email or password',
+          code: 'INVALID_CREDENTIALS'
         } as AuthResponse);
         return;
       }
@@ -90,6 +93,7 @@ export class AuthController {
       res.status(500).json({
         success: false,
         message: 'Internal server error',
+        code: 'INTERNAL_ERROR'
       } as AuthResponse);
     }
   }
@@ -110,6 +114,7 @@ export class AuthController {
       res.status(500).json({
         success: false,
         message: 'Internal server error',
+        code: 'INTERNAL_ERROR'
       });
     }
   }
@@ -123,6 +128,7 @@ export class AuthController {
         res.status(401).json({
           success: false,
           message: 'Not authenticated',
+          code: 'NOT_AUTHENTICATED'
         });
         return;
       }
@@ -144,6 +150,7 @@ export class AuthController {
         res.status(404).json({
           success: false,
           message: 'User not found',
+          code: 'USER_NOT_FOUND'
         });
         return;
       }
@@ -159,6 +166,7 @@ export class AuthController {
       res.status(500).json({
         success: false,
         message: 'Internal server error',
+        code: 'INTERNAL_ERROR'
       });
     }
   }
@@ -174,6 +182,7 @@ export class AuthController {
         res.status(400).json({
           success: false,
           message: 'Refresh token is required',
+          code: 'MISSING_REFRESH_TOKEN'
         });
         return;
       }
@@ -190,6 +199,7 @@ export class AuthController {
         res.status(401).json({
           success: false,
           message: 'User not found',
+          code: 'USER_NOT_FOUND'
         });
         return;
       }
@@ -210,6 +220,7 @@ export class AuthController {
       res.status(401).json({
         success: false,
         message: 'Invalid refresh token',
+        code: 'INVALID_REFRESH_TOKEN'
       });
     }
   }

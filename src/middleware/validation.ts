@@ -255,12 +255,15 @@ export const createRateLimit = (windowMs: number, maxRequests: number) => {
 
     // Check if limit exceeded
     if (requestData.count >= maxRequests) {
-      res.status(429).json({
-        success: false,
-        message: 'Too many requests, please try again later',
-        code: 'RATE_LIMIT_EXCEEDED',
-        retryAfter: Math.ceil((requestData.resetTime - now) / 1000)
-      });
+      const retryAfterSeconds = Math.ceil((requestData.resetTime - now) / 1000);
+      res.status(429)
+        .header('Retry-After', String(retryAfterSeconds))
+        .json({
+          success: false,
+          message: 'Too many requests, please try again later',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: retryAfterSeconds
+        });
       return;
     }
 

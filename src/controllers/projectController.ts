@@ -230,7 +230,8 @@ export class ProjectController {
       if (!name || !category) {
         res.status(400).json({
           success: false,
-          message: 'Project name and category are required'
+          message: 'Project name and category are required',
+          code: 'MISSING_REQUIRED_FIELDS'
         } as ProjectResponse);
         return;
       }
@@ -246,7 +247,8 @@ export class ProjectController {
       if (!teamMember) {
         res.status(403).json({
           success: false,
-          message: 'Only team leaders can create projects'
+          message: 'Only team leaders can create projects',
+          code: 'INSUFFICIENT_PERMISSIONS'
         } as ProjectResponse);
         return;
       }
@@ -282,7 +284,8 @@ export class ProjectController {
       console.error('Create project error:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
       } as ProjectResponse);
     }
   }
@@ -314,7 +317,8 @@ export class ProjectController {
       if (!existingProject) {
         res.status(404).json({
           success: false,
-          message: 'Project not found'
+          message: 'Project not found',
+          code: 'PROJECT_NOT_FOUND'
         } as ProjectResponse);
         return;
       }
@@ -323,16 +327,18 @@ export class ProjectController {
       if (!ProjectController.canModifyProject(req.user, existingProject)) {
         res.status(403).json({
           success: false,
-          message: 'Access denied'
+          message: 'Access denied',
+          code: 'INSUFFICIENT_PERMISSIONS'
         } as ProjectResponse);
         return;
       }
 
       // Validate progress
       if (progress !== undefined && (progress < 0 || progress > 100)) {
-        res.status(400).json({
+        res.status(422).json({
           success: false,
-          message: 'Progress must be between 0 and 100'
+          message: 'Progress must be between 0 and 100',
+          code: 'INVALID_PROGRESS_VALUE'
         } as ProjectResponse);
         return;
       }
@@ -368,7 +374,8 @@ export class ProjectController {
       console.error('Update project error:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
       } as ProjectResponse);
     }
   }
@@ -404,7 +411,8 @@ export class ProjectController {
       if (!project) {
         res.status(404).json({
           success: false,
-          message: 'Project not found'
+          message: 'Project not found',
+          code: 'PROJECT_NOT_FOUND'
         } as ProjectResponse);
         return;
       }
@@ -413,7 +421,8 @@ export class ProjectController {
       if (!ProjectController.canModifyProject(req.user, project)) {
         res.status(403).json({
           success: false,
-          message: 'Access denied'
+          message: 'Access denied',
+          code: 'INSUFFICIENT_PERMISSIONS'
         } as ProjectResponse);
         return;
       }
@@ -426,16 +435,14 @@ export class ProjectController {
         where: { id }
       });
 
-      res.json({
-        success: true,
-        message: 'Project deleted successfully'
-      } as ProjectResponse);
+      res.status(204).send();
 
     } catch (error) {
       console.error('Delete project error:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
       } as ProjectResponse);
     }
   }
@@ -466,7 +473,8 @@ export class ProjectController {
       if (!project) {
         res.status(404).json({
           success: false,
-          message: 'Project not found'
+          message: 'Project not found',
+          code: 'PROJECT_NOT_FOUND'
         } as ProjectResponse);
         return;
       }
@@ -475,7 +483,8 @@ export class ProjectController {
       if (!ProjectController.canAccessProject(req.user, project)) {
         res.status(403).json({
           success: false,
-          message: 'Access denied'
+          message: 'Access denied',
+          code: 'INSUFFICIENT_PERMISSIONS'
         } as ProjectResponse);
         return;
       }
@@ -496,7 +505,8 @@ export class ProjectController {
       console.error('Get project files error:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
       });
     }
   }
@@ -512,7 +522,8 @@ export class ProjectController {
       if (!file) {
         res.status(400).json({
           success: false,
-          message: 'No file uploaded'
+          message: 'No file uploaded',
+          code: 'NO_FILE_UPLOADED'
         } as ProjectResponse);
         return;
       }
@@ -536,7 +547,8 @@ export class ProjectController {
       if (!project) {
         res.status(404).json({
           success: false,
-          message: 'Project not found'
+          message: 'Project not found',
+          code: 'PROJECT_NOT_FOUND'
         } as ProjectResponse);
         return;
       }
@@ -545,7 +557,8 @@ export class ProjectController {
       if (!ProjectController.canModifyProject(req.user, project)) {
         res.status(403).json({
           success: false,
-          message: 'Access denied'
+          message: 'Access denied',
+          code: 'INSUFFICIENT_PERMISSIONS'
         } as ProjectResponse);
         return;
       }
@@ -572,7 +585,8 @@ export class ProjectController {
       console.error('Upload file error:', error);
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error',
+        code: 'INTERNAL_SERVER_ERROR'
       });
     }
   }
@@ -610,7 +624,8 @@ export class ProjectController {
       if (!file) {
         res.status(404).json({
           success: false,
-          message: 'File not found'
+          message: 'File not found',
+          code: 'FILE_NOT_FOUND'
         } as ProjectResponse);
         return;
       }
@@ -631,10 +646,7 @@ export class ProjectController {
 
       // TODO: Delete actual file from storage
 
-      res.json({
-        success: true,
-        message: 'File deleted successfully'
-      });
+      res.status(204).send();
 
     } catch (error) {
       console.error('Delete file error:', error);
