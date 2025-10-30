@@ -96,6 +96,24 @@ export class TeamController {
               }
             }
           },
+          mentor_assignments: {
+            include: {
+              mentor: {
+                select: {
+                  id: true,
+                  expertise: true,
+                  phone: true,
+                  user: {
+                    select: {
+                      id: true,
+                      name: true,
+                      email: true
+                    }
+                  }
+                }
+              }
+            }
+          },
           _count: {
             select: {
               team_members: true,

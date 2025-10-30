@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { MentorController } from '../controllers/mentorController';
 import { AuthMiddleware, requireManager } from '../middleware/auth';
+import { validateBody } from '../middleware/validation';
+import { mentorSchemas } from '../utils/validation';
 
 const router = Router();
 
@@ -16,7 +18,7 @@ router.get('/', AuthMiddleware.authenticate, MentorController.getAllMentors);
  * @desc Create new mentor
  * @access Private (Manager, Director)
  */
-router.post('/', AuthMiddleware.authenticate, requireManager, MentorController.createMentor);
+router.post('/', AuthMiddleware.authenticate, requireManager, validateBody(mentorSchemas.create), MentorController.createMentor);
 
 /**
  * @route GET /api/mentors/:id
@@ -30,7 +32,7 @@ router.get('/:id', AuthMiddleware.authenticate, MentorController.getMentorById);
  * @desc Update mentor
  * @access Private (Manager, Director)
  */
-router.put('/:id', AuthMiddleware.authenticate, requireManager, MentorController.updateMentor);
+router.put('/:id', AuthMiddleware.authenticate, requireManager, validateBody(mentorSchemas.update), MentorController.updateMentor);
 
 /**
  * @route DELETE /api/mentors/:id
@@ -44,7 +46,7 @@ router.delete('/:id', AuthMiddleware.authenticate, requireManager, MentorControl
  * @desc Assign mentor to team
  * @access Private (Manager, Director)
  */
-router.post('/:id/assign', AuthMiddleware.authenticate, requireManager, MentorController.assignMentorToTeam);
+router.post('/:id/assign', AuthMiddleware.authenticate, requireManager, validateBody(mentorSchemas.assign), MentorController.assignMentorToTeam);
 
 /**
  * @route DELETE /api/mentors/:id/assign/:teamId
