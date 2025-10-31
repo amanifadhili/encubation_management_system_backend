@@ -33,6 +33,34 @@ router.get('/projects', AuthMiddleware.authenticate, ReportsController.getProjec
 router.get('/dashboard/analytics', AuthMiddleware.authenticate, ReportsController.getDashboardAnalytics);
 
 /**
+ * @route GET /api/reports/advanced
+ * @desc Get advanced reports with comprehensive filtering
+ * @access Private (Director, Manager)
+ */
+router.get('/advanced', AuthMiddleware.authenticate, ReportsController.getAdvancedReports);
+
+/**
+ * @route GET /api/reports/time-series
+ * @desc Get time-series analytics data
+ * @access Private (Director, Manager)
+ */
+router.get('/time-series', AuthMiddleware.authenticate, ReportsController.getTimeSeriesAnalytics);
+
+/**
+ * @route GET /api/reports/system-metrics
+ * @desc Get comprehensive system-wide metrics
+ * @access Private (Director, Manager)
+ */
+router.get('/system-metrics', AuthMiddleware.authenticate, ReportsController.getSystemMetrics);
+
+/**
+ * @route GET /api/reports/cross-entity
+ * @desc Get cross-entity analytics and insights
+ * @access Private (Director, Manager)
+ */
+router.get('/cross-entity', AuthMiddleware.authenticate, ReportsController.getCrossEntityAnalytics);
+
+/**
  * @route POST /api/reports/export
  * @desc Export reports as data for PDF generation
  * @access Private (Director, Manager)
