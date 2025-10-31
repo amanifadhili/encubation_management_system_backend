@@ -54,7 +54,8 @@ export class MessageController {
                 select: {
                   id: true,
                   name: true,
-                  email: true
+                  email: true,
+                  role: true
                 }
               }
             }
@@ -82,13 +83,41 @@ export class MessageController {
 
       const totalPages = Math.ceil(total / limitNum);
 
-      // Format conversations with participant info
-      const formattedConversations = conversations.map(conv => {
+      // Get all unique participant IDs from conversations
+      const allParticipantIds = new Set<string>();
+      conversations.forEach(conv => {
         const participants = conv.participants as string[];
-        const otherParticipants = participants.filter(p => p !== req.user?.userId);
+        participants.forEach(p => allParticipantIds.add(p));
+      });
+
+      // Fetch user details for all participants
+      const participantUsers = await prisma.user.findMany({
+        where: {
+          id: {
+            in: Array.from(allParticipantIds)
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      });
+
+      // Create a map for quick user lookup
+      const userMap = new Map(participantUsers.map(user => [user.id, user]));
+
+      // Format conversations with participant user objects
+      const formattedConversations = conversations.map(conv => {
+        const participantIds = conv.participants as string[];
+        const participants = participantIds.map(id => userMap.get(id)).filter(Boolean);
+        const otherParticipants = participants.filter(p => p!.id !== req.user?.userId);
+
         return {
           ...conv,
-          other_participants: otherParticipants,
+          participants, // Now contains user objects instead of IDs
+          other_participants: otherParticipants, // Now contains user objects
           latest_message: conv.messages[0] || null
         };
       });
@@ -175,10 +204,10 @@ export class MessageController {
         }
 
         // Check if current user can message this participant
-        if (!(await MessageController.canMessageUser(req.user!, user))) {
+        if (participantId !== req.user!.userId && !(await MessageController.canMessageUser(req.user!, user))) {
           res.status(403).json({
             success: false,
-            message: `You cannot message user ${user.name}`
+            message: `You cannot message user ${user.name || user.email}`
           } as MessageResponse);
           return;
         }
@@ -191,10 +220,36 @@ export class MessageController {
         }
       });
 
+      // Get user details for the created conversation
+      const participantUsers = await prisma.user.findMany({
+        where: {
+          id: {
+            in: allParticipants
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      });
+
+      // Format conversation with user objects
+      const userMap = new Map(participantUsers.map(user => [user.id, user]));
+      const participantObjects = allParticipants.map(id => userMap.get(id)).filter(Boolean);
+      const otherParticipants = participantObjects.filter(p => p!.id !== req.user?.userId);
+
+      const formattedConversation = {
+        ...conversation,
+        participants: participantObjects,
+        other_participants: otherParticipants
+      };
+
       res.status(201).json({
         success: true,
         message: 'Conversation created successfully',
-        data: { conversation }
+        data: { conversation: formattedConversation }
       } as MessageResponse);
 
     } catch (error) {
@@ -572,11 +627,30 @@ export class MessageController {
         return;
       }
 
-      // Format response
-      const otherParticipants = participants.filter(p => p !== req.user?.userId);
+      // Get user details for participants
+      const participantUsers = await prisma.user.findMany({
+        where: {
+          id: {
+            in: participants
+          }
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      });
+
+      // Create user map and format participants
+      const userMap = new Map(participantUsers.map(user => [user.id, user]));
+      const participantObjects = participants.map(id => userMap.get(id)).filter(Boolean);
+      const otherParticipants = participantObjects.filter(p => p!.id !== req.user?.userId);
+
       const formattedConversation = {
         ...conversation,
-        other_participants: otherParticipants,
+        participants: participantObjects, // User objects instead of IDs
+        other_participants: otherParticipants, // User objects instead of IDs
         latest_message: conversation.messages[0] || null
       };
 
