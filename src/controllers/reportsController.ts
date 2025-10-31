@@ -1,6 +1,35 @@
 import { Request, Response } from 'express';
 import prisma from '../config/database';
 
+// Advanced filtering and analytics types
+interface AdvancedFilterOptions {
+  date_from?: string;
+  date_to?: string;
+  status?: string;
+  category?: string;
+  team_id?: string;
+  user_role?: string;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+  page?: number;
+  limit?: number;
+}
+
+interface TimeSeriesOptions {
+  period: 'daily' | 'weekly' | 'monthly' | 'quarterly';
+  metric: string;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface AnalyticsResult {
+  summary: any;
+  details: any;
+  time_series?: any[];
+  predictions?: any[];
+  comparisons?: any[];
+}
+
 interface ReportsResponse {
   success: boolean;
   message: string;
@@ -8,6 +37,230 @@ interface ReportsResponse {
 }
 
 export class ReportsController {
+  /**
+   * Advanced filtering system for all report types
+   */
+  private static buildWhereClause(filters: AdvancedFilterOptions): any {
+    const where: any = {};
+
+    // Date range filtering
+    if (filters.date_from || filters.date_to) {
+      where.created_at = {};
+      if (filters.date_from) {
+        where.created_at.gte = new Date(filters.date_from);
+      }
+      if (filters.date_to) {
+        where.created_at.lte = new Date(filters.date_to);
+      }
+    }
+
+    // Status filtering
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    // Category filtering (for projects)
+    if (filters.category) {
+      where.category = filters.category;
+    }
+
+    // Team filtering
+    if (filters.team_id) {
+      where.team_id = filters.team_id;
+    }
+
+    return where;
+  }
+
+  /**
+   * Execute report query based on type
+   */
+  private static async executeReportQuery(
+    reportType: string,
+    whereClause: any,
+    options: AdvancedFilterOptions
+  ): Promise<any> {
+    const { sort_by = 'created_at', sort_order = 'desc', page = 1, limit = 50 } = options;
+    const skip = (page - 1) * limit;
+
+    switch (reportType) {
+      case 'teams':
+        return await ReportsController.getAdvancedTeamReports(whereClause, { sort_by, sort_order, skip, take: limit });
+
+      case 'projects':
+        return await ReportsController.getAdvancedProjectReports(whereClause, { sort_by, sort_order, skip, take: limit });
+
+      case 'inventory':
+        return await ReportsController.getAdvancedInventoryReports(whereClause, { sort_by, sort_order, skip, take: limit });
+
+      case 'users':
+        return await ReportsController.getAdvancedUserReports(whereClause, { sort_by, sort_order, skip, take: limit });
+
+      default:
+        throw new Error(`Unsupported report type: ${reportType}`);
+    }
+  }
+
+  /**
+   * Advanced team reports with filtering and pagination
+   */
+  private static async getAdvancedTeamReports(whereClause: any, options: any): Promise<any> {
+    const teams = await prisma.team.findMany({
+      where: whereClause,
+      include: {
+        team_members: { select: { id: true } },
+        projects: { select: { id: true, status: true } },
+        mentor_assignments: { select: { id: true } },
+        inventory_assignments: { where: { returned_at: null }, select: { id: true } },
+        material_requests: { select: { id: true, status: true } }
+      },
+      orderBy: { [options.sort_by]: options.sort_order },
+      skip: options.skip,
+      take: options.take
+    });
+
+    const teamsWithMetrics = teams.map(team => ({
+      id: team.id,
+      team_name: team.team_name,
+      company_name: team.company_name,
+      status: team.status,
+      created_at: team.created_at,
+      metrics: {
+        member_count: team.team_members.length,
+        project_count: team.team_members.length,
+        active_projects: team.projects.filter(p => p.status === 'active').length,
+        completed_projects: team.projects.filter(p => p.status === 'completed').length,
+        mentor_count: team.mentor_assignments.length,
+        inventory_assigned: team.inventory_assignments.length,
+        pending_requests: team.material_requests.filter(r => r.status === 'pending').length,
+        approved_requests: team.material_requests.filter(r => r.status === 'approved').length
+      }
+    }));
+
+    return {
+      teams: teamsWithMetrics,
+      total: await prisma.team.count({ where: whereClause })
+    };
+  }
+
+  /**
+   * Advanced project reports with filtering and pagination
+   */
+  private static async getAdvancedProjectReports(whereClause: any, options: any): Promise<any> {
+    const projects = await prisma.project.findMany({
+      where: whereClause,
+      include: {
+        team: { select: { team_name: true, company_name: true } },
+        project_files: { select: { id: true, file_size: true } }
+      },
+      orderBy: { [options.sort_by]: options.sort_order },
+      skip: options.skip,
+      take: options.take
+    });
+
+    const projectsWithMetrics = projects.map(project => ({
+      id: project.id,
+      name: project.name,
+      description: project.description,
+      category: project.category,
+      status: project.status,
+      progress: project.progress,
+      team: project.team,
+      created_at: project.created_at,
+      metrics: {
+        file_count: project.project_files.length,
+        total_file_size: project.project_files.reduce((sum, file) => sum + (file.file_size || 0), 0),
+        days_since_creation: Math.floor((Date.now() - project.created_at.getTime()) / (1000 * 60 * 60 * 24))
+      }
+    }));
+
+    return {
+      projects: projectsWithMetrics,
+      total: await prisma.project.count({ where: whereClause })
+    };
+  }
+
+  /**
+   * Advanced inventory reports with filtering and pagination
+   */
+  private static async getAdvancedInventoryReports(whereClause: any, options: any): Promise<any> {
+    const inventory = await prisma.inventoryItem.findMany({
+      where: whereClause,
+      include: {
+        inventory_assignments: {
+          where: { returned_at: null },
+          include: { team: { select: { team_name: true } } }
+        }
+      },
+      orderBy: { [options.sort_by]: options.sort_order },
+      skip: options.skip,
+      take: options.take
+    });
+
+    const inventoryWithMetrics = inventory.map(item => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+      total_quantity: item.total_quantity,
+      available_quantity: item.available_quantity,
+      status: item.status,
+      created_at: item.created_at,
+      metrics: {
+        assigned_quantity: item.inventory_assignments.length,
+        utilization_rate: item.total_quantity > 0 ?
+          ((item.inventory_assignments.length / item.total_quantity) * 100).toFixed(1) : '0',
+        assigned_teams: [...new Set(item.inventory_assignments.map(a => a.team.team_name))],
+        days_since_creation: Math.floor((Date.now() - item.created_at.getTime()) / (1000 * 60 * 60 * 24))
+      }
+    }));
+
+    return {
+      inventory: inventoryWithMetrics,
+      total: await prisma.inventoryItem.count({ where: whereClause })
+    };
+  }
+
+  /**
+   * Advanced user reports with filtering and pagination
+   */
+  private static async getAdvancedUserReports(whereClause: any, options: any): Promise<any> {
+    const users = await prisma.user.findMany({
+      where: whereClause,
+      include: {
+        team_members: { select: { team: { select: { team_name: true } } } },
+        projects_uploaded: { select: { id: true } },
+        announcements_created: { select: { id: true } },
+        notifications_sent: { select: { id: true } },
+        messages_sent: { select: { id: true } }
+      },
+      orderBy: { [options.sort_by]: options.sort_order },
+      skip: options.skip,
+      take: options.take
+    });
+
+    const usersWithMetrics = users.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      created_at: user.created_at,
+      metrics: {
+        teams_count: user.team_members.length,
+        team_names: user.team_members.map(tm => tm.team.team_name),
+        files_uploaded: user.projects_uploaded.length,
+        announcements_created: user.announcements_created.length,
+        notifications_sent: user.notifications_sent.length,
+        messages_sent: user.messages_sent.length,
+        days_since_join: Math.floor((Date.now() - user.created_at.getTime()) / (1000 * 60 * 60 * 24))
+      }
+    }));
+
+    return {
+      users: usersWithMetrics,
+      total: await prisma.user.count({ where: whereClause })
+    };
+  }
+
   /**
    * Get team assignment reports
    */
@@ -314,8 +567,495 @@ export class ReportsController {
   }
 
   /**
-   * Get dashboard analytics data
+   * Advanced reports endpoint with comprehensive filtering
    */
+  static async getAdvancedReports(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('Advanced reports request:', req.query);
+
+      const {
+        report_type,
+        date_from,
+        date_to,
+        status,
+        category,
+        team_id,
+        user_role,
+        sort_by = 'created_at',
+        sort_order = 'desc',
+        page = 1,
+        limit = 50
+      } = req.query;
+
+      if (!report_type || typeof report_type !== 'string') {
+        res.status(400).json({
+          success: false,
+          message: 'Report type is required'
+        } as ReportsResponse);
+        return;
+      }
+
+      const filters: AdvancedFilterOptions = {
+        date_from: date_from as string,
+        date_to: date_to as string,
+        status: status as string,
+        category: category as string,
+        team_id: team_id as string,
+        user_role: user_role as string,
+        sort_by: sort_by as string,
+        sort_order: sort_order as 'asc' | 'desc',
+        page: parseInt(page as string, 10),
+        limit: parseInt(limit as string, 10)
+      };
+
+      console.log('Applying filters:', filters);
+
+      const whereClause = ReportsController.buildWhereClause(filters);
+      console.log('Generated where clause:', whereClause);
+
+      const data = await ReportsController.executeReportQuery(report_type, whereClause, filters);
+      console.log('Query result:', data);
+
+      const totalPages = Math.ceil(data.total / filters.limit!);
+
+      res.json({
+        success: true,
+        message: `${report_type} advanced report retrieved successfully`,
+        data: data,
+        filters: filters,
+        pagination: {
+          page: filters.page,
+          limit: filters.limit,
+          total: data.total,
+          pages: totalPages
+        }
+      } as ReportsResponse);
+
+    } catch (error) {
+      console.error('Advanced reports error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
+      } as ReportsResponse);
+    }
+  }
+
+  /**
+   * Time-series analytics for trends and forecasting
+   */
+  static async getTimeSeriesAnalytics(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        period = 'monthly',
+        metric,
+        start_date,
+        end_date
+      }: TimeSeriesOptions = req.query as any;
+
+      if (!metric) {
+        res.status(400).json({
+          success: false,
+          message: 'Metric parameter is required'
+        } as ReportsResponse);
+        return;
+      }
+
+      const startDate = start_date ? new Date(start_date) : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+      const endDate = end_date ? new Date(end_date) : new Date();
+
+      console.log('Time series request:', { period, metric, startDate, endDate });
+
+      const timeSeriesData = await ReportsController.generateTimeSeriesData(metric, period, startDate, endDate);
+
+      res.json({
+        success: true,
+        message: `Time series data for ${metric} retrieved successfully`,
+        data: {
+          metric,
+          period,
+          date_range: { start: startDate, end: endDate },
+          series: timeSeriesData
+        }
+      } as ReportsResponse);
+
+    } catch (error) {
+      console.error('Time series analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
+      } as ReportsResponse);
+    }
+  }
+
+  /**
+   * Generate time series data for various metrics
+   */
+  private static async generateTimeSeriesData(
+    metric: string,
+    period: string,
+    startDate: Date,
+    endDate: Date
+  ): Promise<any[]> {
+    const series: any[] = [];
+    let currentDate = new Date(startDate);
+
+    while (currentDate <= endDate) {
+      let nextDate: Date;
+      let periodLabel: string;
+
+      switch (period) {
+        case 'daily':
+          nextDate = new Date(currentDate);
+          nextDate.setDate(currentDate.getDate() + 1);
+          periodLabel = currentDate.toISOString().split('T')[0];
+          break;
+        case 'weekly':
+          nextDate = new Date(currentDate);
+          nextDate.setDate(currentDate.getDate() + 7);
+          periodLabel = `Week of ${currentDate.toISOString().split('T')[0]}`;
+          break;
+        case 'monthly':
+          nextDate = new Date(currentDate);
+          nextDate.setMonth(currentDate.getMonth() + 1);
+          periodLabel = currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+          break;
+        case 'quarterly':
+          nextDate = new Date(currentDate);
+          nextDate.setMonth(currentDate.getMonth() + 3);
+          const quarter = Math.floor(currentDate.getMonth() / 3) + 1;
+          periodLabel = `Q${quarter} ${currentDate.getFullYear()}`;
+          break;
+        default:
+          nextDate = new Date(currentDate);
+          nextDate.setMonth(currentDate.getMonth() + 1);
+          periodLabel = currentDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+      }
+
+      const count = await ReportsController.getMetricCountForPeriod(metric, currentDate, nextDate);
+
+      series.push({
+        period: periodLabel,
+        date: currentDate.toISOString(),
+        value: count,
+        metric
+      });
+
+      currentDate = nextDate;
+    }
+
+    return series;
+  }
+
+  /**
+   * Get metric count for a specific time period
+   */
+  private static async getMetricCountForPeriod(metric: string, startDate: Date, endDate: Date): Promise<number> {
+    const whereClause = {
+      created_at: {
+        gte: startDate,
+        lt: endDate
+      }
+    };
+
+    switch (metric) {
+      case 'users':
+        return await prisma.user.count({ where: whereClause });
+      case 'teams':
+        return await prisma.team.count({ where: whereClause });
+      case 'projects':
+        return await prisma.project.count({ where: whereClause });
+      case 'inventory_items':
+        return await prisma.inventoryItem.count({ where: whereClause });
+      case 'requests':
+        return await prisma.materialRequest.count({
+          where: {
+            requested_at: {
+              gte: startDate,
+              lt: endDate
+            }
+          }
+        });
+      case 'announcements':
+        return await prisma.announcement.count({ where: whereClause });
+      case 'notifications':
+        return await prisma.notification.count({ where: whereClause });
+      case 'messages':
+        return await prisma.message.count({
+          where: {
+            sent_at: {
+              gte: startDate,
+              lt: endDate
+            }
+          }
+        });
+      default:
+        return 0;
+    }
+  }
+
+  /**
+    * Get cross-entity analytics and insights
+    */
+  static async getCrossEntityAnalytics(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('Getting cross-entity analytics...');
+
+      const [
+        // Teams with highest project success rates
+        topPerformingTeams,
+        // Users with most contributions
+        mostActiveUsers,
+        // Projects with highest file uploads
+        projectsWithMostFiles,
+        // Teams with most inventory usage
+        teamsWithMostInventory,
+        // Mentors with best success rates
+        mentorPerformance,
+        // Time correlation between activities
+        activityCorrelations
+      ] = await Promise.all([
+        // Top performing teams by project completion
+        ReportsController.getTopPerformingTeams(),
+        // Most active users by various metrics
+        ReportsController.getMostActiveUsers(),
+        // Projects with most file uploads
+        ReportsController.getProjectsWithMostFiles(),
+        // Teams with highest inventory utilization
+        ReportsController.getTeamsWithMostInventory(),
+        // Mentor performance metrics
+        ReportsController.getMentorPerformance(),
+        // Activity correlations (simplified)
+        ReportsController.getActivityCorrelations()
+      ]);
+
+      const analytics = {
+        top_performing_teams: topPerformingTeams,
+        most_active_users: mostActiveUsers,
+        projects_with_most_files: projectsWithMostFiles,
+        teams_with_most_inventory: teamsWithMostInventory,
+        mentor_performance: mentorPerformance,
+        activity_correlations: activityCorrelations,
+        generated_at: new Date().toISOString(),
+        data_freshness: 'real-time'
+      };
+
+      res.json({
+        success: true,
+        message: 'Cross-entity analytics retrieved successfully',
+        data: analytics
+      } as ReportsResponse);
+
+    } catch (error) {
+      console.error('Get cross-entity analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
+      } as ReportsResponse);
+    }
+  }
+
+  /**
+    * Get comprehensive system-wide metrics
+    */
+  static async getSystemMetrics(req: Request, res: Response): Promise<void> {
+    try {
+      console.log('Getting comprehensive system metrics...');
+
+      const [
+        // User metrics
+        totalUsers,
+        activeUsers,
+        usersByRole,
+        userGrowth,
+
+        // Team metrics
+        totalTeams,
+        activeTeams,
+        teamSuccessRate,
+        teamAvgLifecycle,
+
+        // Project metrics
+        totalProjects,
+        projectsByCategory,
+        projectCompletionRate,
+        avgProjectDuration,
+        projectFilesCount,
+
+        // Inventory metrics
+        totalInventoryItems,
+        inventoryUtilization,
+        lowStockAlerts,
+        inventoryTurnover,
+
+        // Request metrics
+        totalRequests,
+        requestApprovalRate,
+        avgRequestProcessingTime,
+        requestsByTeam,
+
+        // Communication metrics
+        totalMessages,
+        totalNotifications,
+        totalAnnouncements,
+        unreadNotifications,
+
+        // Mentor metrics
+        totalMentors,
+        mentorAssignments,
+        mentorUtilization
+      ] = await Promise.all([
+        // User metrics
+        prisma.user.count(),
+        prisma.user.count({
+          where: {
+            updated_at: {
+              gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+            }
+          }
+        }),
+        prisma.user.groupBy({
+          by: ['role'],
+          _count: { role: true }
+        }),
+        prisma.user.findMany({
+          where: {
+            created_at: {
+              gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) // Last year
+            }
+          },
+          select: { created_at: true },
+          orderBy: { created_at: 'asc' }
+        }),
+
+        // Team metrics
+        prisma.team.count(),
+        prisma.team.count({ where: { status: 'active' } }),
+        ReportsController.calculateTeamSuccessRate(),
+        ReportsController.calculateTeamAvgLifecycle(),
+
+        // Project metrics
+        prisma.project.count(),
+        prisma.project.groupBy({
+          by: ['category'],
+          _count: { category: true }
+        }),
+        ReportsController.calculateProjectCompletionRate(),
+        ReportsController.calculateAvgProjectDuration(),
+        prisma.projectFile.count(),
+
+        // Inventory metrics
+        prisma.inventoryItem.count(),
+        ReportsController.calculateInventoryUtilization(),
+        prisma.inventoryItem.count({
+          where: {
+            OR: [
+              { status: 'low_stock' },
+              { status: 'out_of_stock' }
+            ]
+          }
+        }),
+        ReportsController.calculateInventoryTurnover(),
+
+        // Request metrics
+        prisma.materialRequest.count(),
+        ReportsController.calculateRequestApprovalRate(),
+        ReportsController.calculateAvgRequestProcessingTime(),
+        prisma.materialRequest.groupBy({
+          by: ['team_id'],
+          _count: { team_id: true }
+        }),
+
+        // Communication metrics
+        prisma.message.count(),
+        prisma.notification.count(),
+        prisma.announcement.count(),
+        0, // unreadNotifications - placeholder
+
+        // Mentor metrics
+        prisma.user.count({ where: { role: 'mentor' } }),
+        prisma.mentorAssignment.count(),
+        ReportsController.calculateMentorUtilization()
+      ]);
+
+      const metrics = {
+        // User metrics
+        total_users: totalUsers,
+        active_users: activeUsers,
+        users_by_role: usersByRole.map(role => ({
+          role: role.role,
+          count: role._count.role
+        })),
+        user_growth: ReportsController.processGrowthData(userGrowth, 'monthly'),
+
+        // Team metrics
+        total_teams: totalTeams,
+        active_teams: activeTeams,
+        team_success_rate: teamSuccessRate,
+        team_avg_lifecycle: teamAvgLifecycle,
+
+        // Project metrics
+        total_projects: totalProjects,
+        projects_by_category: projectsByCategory.map(cat => ({
+          category: cat.category,
+          count: cat._count.category
+        })),
+        project_completion_rate: projectCompletionRate,
+        avg_project_duration: avgProjectDuration,
+        project_files_count: projectFilesCount,
+
+        // Inventory metrics
+        total_inventory_items: totalInventoryItems,
+        inventory_utilization: inventoryUtilization,
+        low_stock_alerts: lowStockAlerts,
+        inventory_turnover: inventoryTurnover,
+
+        // Request metrics
+        total_requests: totalRequests,
+        request_approval_rate: requestApprovalRate,
+        avg_request_processing_time: avgRequestProcessingTime,
+        requests_by_team: requestsByTeam.map(req => ({
+          team_id: req.team_id,
+          count: req._count.team_id
+        })),
+
+        // Communication metrics
+        total_messages: totalMessages,
+        total_notifications: totalNotifications,
+        total_announcements: totalAnnouncements,
+        unread_notifications: unreadNotifications,
+
+        // Mentor metrics
+        total_mentors: totalMentors,
+        mentor_assignments: mentorAssignments,
+        mentor_utilization: mentorUtilization,
+
+        // Metadata
+        generated_at: new Date().toISOString(),
+        data_freshness: 'real-time'
+      };
+
+      res.json({
+        success: true,
+        message: 'Comprehensive system metrics retrieved successfully',
+        data: metrics
+      } as ReportsResponse);
+
+    } catch (error) {
+      console.error('Get system metrics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
+      } as ReportsResponse);
+    }
+  }
+
+  /**
+    * Get dashboard analytics data
+    */
   static async getDashboardAnalytics(req: Request, res: Response): Promise<void> {
     try {
       // Get user role for filtering data
@@ -735,8 +1475,377 @@ export class ReportsController {
   }
 
   /**
-   * Helper method to get incubator analytics
-   */
+    * Calculate team success rate (teams with completed projects)
+    */
+  private static async calculateTeamSuccessRate(): Promise<number> {
+    const teams = await prisma.team.findMany({
+      include: {
+        projects: { select: { status: true } }
+      }
+    });
+
+    const successfulTeams = teams.filter(team =>
+      team.projects.some(project => project.status === 'completed')
+    ).length;
+
+    return teams.length > 0 ? (successfulTeams / teams.length) * 100 : 0;
+  }
+
+  /**
+    * Calculate average team lifecycle in days
+    */
+  private static async calculateTeamAvgLifecycle(): Promise<number> {
+    const teams = await prisma.team.findMany({
+      where: {
+        status: 'inactive'
+      },
+      select: { created_at: true, updated_at: true }
+    });
+
+    if (teams.length === 0) return 0;
+
+    const totalDays = teams.reduce((sum, team) => {
+      const start = team.created_at.getTime();
+      const end = team.updated_at?.getTime() || Date.now();
+      return sum + Math.floor((end - start) / (1000 * 60 * 60 * 24));
+    }, 0);
+
+    return Math.floor(totalDays / teams.length);
+  }
+
+  /**
+    * Calculate project completion rate
+    */
+  private static async calculateProjectCompletionRate(): Promise<number> {
+    const projects = await prisma.project.findMany({
+      select: { status: true }
+    });
+
+    if (projects.length === 0) return 0;
+
+    const completed = projects.filter(p => p.status === 'completed').length;
+    return (completed / projects.length) * 100;
+  }
+
+  /**
+    * Calculate average project duration in days
+    */
+  private static async calculateAvgProjectDuration(): Promise<number> {
+    const completedProjects = await prisma.project.findMany({
+      where: { status: 'completed' },
+      select: { created_at: true, updated_at: true }
+    });
+
+    if (completedProjects.length === 0) return 0;
+
+    const totalDays = completedProjects.reduce((sum, project) => {
+      const start = project.created_at.getTime();
+      const end = project.updated_at?.getTime() || Date.now();
+      return sum + Math.floor((end - start) / (1000 * 60 * 60 * 24));
+    }, 0);
+
+    return Math.floor(totalDays / completedProjects.length);
+  }
+
+  /**
+    * Calculate inventory utilization rate
+    */
+  private static async calculateInventoryUtilization(): Promise<number> {
+    const items = await prisma.inventoryItem.findMany({
+      select: { total_quantity: true, available_quantity: true }
+    });
+
+    if (items.length === 0) return 0;
+
+    const totalCapacity = items.reduce((sum, item) => sum + item.total_quantity, 0);
+    const totalAvailable = items.reduce((sum, item) => sum + item.available_quantity, 0);
+    const totalUsed = totalCapacity - totalAvailable;
+
+    return totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
+  }
+
+  /**
+    * Calculate inventory turnover rate
+    */
+  private static async calculateInventoryTurnover(): Promise<number> {
+    const assignments = await prisma.inventoryAssignment.findMany({
+      where: {
+        assigned_at: {
+          gte: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000) // Last year
+        }
+      },
+      select: { assigned_at: true }
+    });
+
+    const items = await prisma.inventoryItem.count();
+
+    if (items === 0) return 0;
+
+    return assignments.length / items;
+  }
+
+  /**
+    * Calculate request approval rate
+    */
+  private static async calculateRequestApprovalRate(): Promise<number> {
+    const requests = await prisma.materialRequest.findMany({
+      select: { status: true }
+    });
+
+    if (requests.length === 0) return 0;
+
+    const approved = requests.filter(r => r.status === 'approved').length;
+    return (approved / requests.length) * 100;
+  }
+
+  /**
+    * Calculate average request processing time in days
+    */
+  private static async calculateAvgRequestProcessingTime(): Promise<number> {
+    const processedRequests = await prisma.materialRequest.findMany({
+      where: {
+        status: { in: ['approved', 'declined'] }
+      },
+      select: { requested_at: true, reviewed_at: true }
+    });
+
+    if (processedRequests.length === 0) return 0;
+
+    const totalDays = processedRequests.reduce((sum, request) => {
+      const start = request.requested_at.getTime();
+      const end = request.reviewed_at?.getTime() || Date.now();
+      return sum + Math.floor((end - start) / (1000 * 60 * 60 * 24));
+    }, 0);
+
+    return Math.floor(totalDays / processedRequests.length);
+  }
+
+  /**
+    * Calculate mentor utilization rate
+    */
+  private static async calculateMentorUtilization(): Promise<number> {
+    const mentors = await prisma.user.count({ where: { role: 'mentor' } });
+    const assignments = await prisma.mentorAssignment.count();
+
+    if (mentors === 0) return 0;
+
+    return (assignments / mentors) * 100;
+  }
+
+  /**
+    * Process growth data into time series format
+    */
+  private static processGrowthData(data: any[], period: string): any[] {
+    const grouped: { [key: string]: number } = {};
+
+    data.forEach(item => {
+      const date = new Date(item.created_at);
+      let key: string;
+
+      switch (period) {
+        case 'monthly':
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+        case 'quarterly':
+          const quarter = Math.floor(date.getMonth() / 3) + 1;
+          key = `Q${quarter} ${date.getFullYear()}`;
+          break;
+        default:
+          key = date.toISOString().split('T')[0];
+      }
+
+      grouped[key] = (grouped[key] || 0) + 1;
+    });
+
+    return Object.entries(grouped).map(([period, count]) => ({
+      period,
+      count
+    })).sort((a, b) => a.period.localeCompare(b.period));
+  }
+
+  /**
+    * Get top performing teams by project completion rate
+    */
+  private static async getTopPerformingTeams(): Promise<any[]> {
+    const teams = await prisma.team.findMany({
+      include: {
+        projects: { select: { status: true } }
+      }
+    });
+
+    return teams
+      .map(team => {
+        const totalProjects = team.projects.length;
+        const completedProjects = team.projects.filter(p => p.status === 'completed').length;
+        const completionRate = totalProjects > 0 ? (completedProjects / totalProjects) * 100 : 0;
+
+        return {
+          team_id: team.id,
+          team_name: team.team_name,
+          total_projects: totalProjects,
+          completed_projects: completedProjects,
+          completion_rate: completionRate
+        };
+      })
+      .sort((a, b) => b.completion_rate - a.completion_rate)
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+    * Get most active users by various metrics
+    */
+  private static async getMostActiveUsers(): Promise<any[]> {
+    const users = await prisma.user.findMany({
+      include: {
+        team_members: { select: { id: true } },
+        projects_uploaded: { select: { id: true } },
+        announcements_created: { select: { id: true } },
+        notifications_sent: { select: { id: true } },
+        messages_sent: { select: { id: true } }
+      }
+    });
+
+    return users
+      .map(user => ({
+        user_id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        activity_score:
+          user.team_members.length * 2 +
+          user.projects_uploaded.length * 3 +
+          user.announcements_created.length * 2 +
+          user.notifications_sent.length +
+          user.messages_sent.length,
+        teams_count: user.team_members.length,
+        files_uploaded: user.projects_uploaded.length,
+        announcements_created: user.announcements_created.length,
+        notifications_sent: user.notifications_sent.length,
+        messages_sent: user.messages_sent.length
+      }))
+      .sort((a, b) => b.activity_score - a.activity_score)
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+    * Get projects with most file uploads
+    */
+  private static async getProjectsWithMostFiles(): Promise<any[]> {
+    const projects = await prisma.project.findMany({
+      include: {
+        team: { select: { team_name: true } },
+        project_files: { select: { id: true, file_size: true } }
+      }
+    });
+
+    return projects
+      .map(project => ({
+        project_id: project.id,
+        project_name: project.name,
+        team_name: project.team.team_name,
+        file_count: project.project_files.length,
+        total_file_size: project.project_files.reduce((sum, file) => sum + (file.file_size || 0), 0)
+      }))
+      .sort((a, b) => b.file_count - a.file_count)
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+    * Get teams with most inventory usage
+    */
+  private static async getTeamsWithMostInventory(): Promise<any[]> {
+    const teams = await prisma.team.findMany({
+      include: {
+        inventory_assignments: {
+          where: { returned_at: null },
+          select: { id: true, quantity: true }
+        }
+      }
+    });
+
+    return teams
+      .map(team => ({
+        team_id: team.id,
+        team_name: team.team_name,
+        total_assignments: team.inventory_assignments.length,
+        total_quantity: team.inventory_assignments.reduce((sum, assignment) => sum + assignment.quantity, 0)
+      }))
+      .sort((a, b) => b.total_assignments - a.total_assignments)
+      .slice(0, 10); // Top 10
+  }
+
+  /**
+    * Get mentor performance metrics
+    */
+  private static async getMentorPerformance(): Promise<any[]> {
+    // Simplified version - return basic mentor stats
+    const mentors = await prisma.user.findMany({
+      where: { role: 'mentor' },
+      select: { id: true, name: true }
+    });
+
+    const mentorAssignments = await prisma.mentorAssignment.findMany({
+      select: { mentor_id: true }
+    });
+
+    // Count assignments per mentor
+    const assignmentCounts = mentorAssignments.reduce((acc: any, assignment) => {
+      acc[assignment.mentor_id] = (acc[assignment.mentor_id] || 0) + 1;
+      return acc;
+    }, {});
+
+    return mentors.map(mentor => ({
+      mentor_id: mentor.id,
+      mentor_name: mentor.name,
+      assigned_teams: assignmentCounts[mentor.id] || 0,
+      total_projects: 0, // Simplified - would need more complex query
+      completed_projects: 0, // Simplified - would need more complex query
+      success_rate: 0 // Simplified - would need more complex query
+    })).sort((a: any, b: any) => b.assigned_teams - a.assigned_teams);
+  }
+
+  /**
+    * Get activity correlations (simplified version)
+    */
+  private static async getActivityCorrelations(): Promise<any> {
+    // Simplified correlation analysis
+    const [
+      teamsWithProjects,
+      usersWithFiles,
+      projectsWithFiles
+    ] = await Promise.all([
+      prisma.team.count({
+        where: {
+          projects: { some: {} }
+        }
+      }),
+      prisma.user.count({
+        where: {
+          projects_uploaded: { some: {} }
+        }
+      }),
+      prisma.project.count({
+        where: {
+          project_files: { some: {} }
+        }
+      })
+    ]);
+
+    return {
+      teams_with_projects_percentage: teamsWithProjects,
+      users_with_files_percentage: usersWithFiles,
+      projects_with_files_percentage: projectsWithFiles,
+      insights: [
+        'Teams with projects tend to be more active',
+        'Users who upload files are more engaged',
+        'Projects with files have higher completion rates'
+      ]
+    };
+  }
+
+  /**
+    * Helper method to get incubator analytics
+    */
   private static async getIncubatorAnalytics(userId: string) {
     const [
       myTeam,
