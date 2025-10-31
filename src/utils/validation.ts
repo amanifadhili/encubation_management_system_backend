@@ -1,7 +1,7 @@
 import Joi from 'joi';
 
 // Common validation patterns
-const objectIdPattern = /^[a-fA-F0-9]{25}$/; // CUID pattern
+const objectIdPattern = /^c[a-z0-9]{24}$/; // CUID pattern - starts with 'c' followed by 24 lowercase alphanumeric chars
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
 
@@ -144,7 +144,8 @@ export const teamSchemas = {
       .valid(...teamStatuses)
       .default('pending')
       .messages({
-        'any.only': `Status must be one of: ${teamStatuses.join(', ')}`
+        'any.only': `Status must be one of: ${teamStatuses.join(', ')}`,
+        'string.empty': 'Status is required'
       }),
 
     credentials: Joi.object({
@@ -152,20 +153,26 @@ export const teamSchemas = {
         .required()
         .custom(validateEmail)
         .messages({
-          'string.empty': 'Team email is required',
-          'any.required': 'Team email is required',
+          'string.empty': 'Email is required',
+          'any.required': 'Email is required',
           'string.pattern.base': 'Please enter a valid email address'
         }),
 
       password: Joi.string()
+        .min(6)
         .required()
         .custom(validatePassword)
         .messages({
-          'string.empty': 'Team password is required',
-          'any.required': 'Team password is required',
-          'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+          'string.empty': 'Password is required',
+          'any.required': 'Password is required',
+          'string.min': 'Password must be at least 6 characters long',
+          'string.pattern.base': 'Password must contain at least 8 characters with uppercase, lowercase, number, and special character (@$!%*?&)'
         })
     }).required()
+    .messages({
+      'any.required': 'Team leader credentials are required',
+      'object.base': 'Team leader credentials must be provided'
+    })
   }),
 
   update: Joi.object({
@@ -340,18 +347,18 @@ export const mentorSchemas = {
       .trim()
       .required()
       .messages({
-        'string.empty': 'Mentor name is required',
-        'string.min': 'Mentor name must be at least 2 characters',
-        'string.max': 'Mentor name cannot exceed 100 characters',
-        'any.required': 'Mentor name is required'
+        'string.empty': 'Name is required',
+        'string.min': 'Name must be at least 2 characters',
+        'string.max': 'Name cannot exceed 100 characters',
+        'any.required': 'Name is required'
       }),
 
     email: Joi.string()
       .required()
       .custom(validateEmail)
       .messages({
-        'string.empty': 'Mentor email is required',
-        'any.required': 'Mentor email is required',
+        'string.empty': 'Email is required',
+        'any.required': 'Email is required',
         'string.pattern.base': 'Please enter a valid email address'
       }),
 
@@ -359,9 +366,10 @@ export const mentorSchemas = {
       .min(2)
       .max(200)
       .trim()
-      .optional()
-      .allow('')
+      .required()
       .messages({
+        'string.empty': 'Expertise is required',
+        'any.required': 'Expertise is required',
         'string.min': 'Expertise must be at least 2 characters',
         'string.max': 'Expertise cannot exceed 200 characters'
       }),
@@ -382,8 +390,8 @@ export const mentorSchemas = {
       .trim()
       .optional()
       .messages({
-        'string.min': 'Mentor name must be at least 2 characters',
-        'string.max': 'Mentor name cannot exceed 100 characters'
+        'string.min': 'Name must be at least 2 characters',
+        'string.max': 'Name cannot exceed 100 characters'
       }),
 
     email: Joi.string()

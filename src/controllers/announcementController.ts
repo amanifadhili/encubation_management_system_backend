@@ -135,7 +135,8 @@ export class AnnouncementController {
       if (!title || !content) {
         res.status(400).json({
           success: false,
-          message: 'Title and content are required'
+          message: 'Title and content are required',
+          code: 'MISSING_REQUIRED_FIELDS'
         } as AnnouncementResponse);
         return;
       }
@@ -144,7 +145,8 @@ export class AnnouncementController {
       if (!AnnouncementController.canCreateAnnouncement(req.user!.role)) {
         res.status(403).json({
           success: false,
-          message: 'You do not have permission to create announcements'
+          message: 'You do not have permission to create announcements',
+          code: 'INSUFFICIENT_PERMISSIONS'
         } as AnnouncementResponse);
         return;
       }

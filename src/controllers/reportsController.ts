@@ -378,22 +378,166 @@ export class ReportsController {
    */
   static async exportReport(req: Request, res: Response): Promise<void> {
     try {
+      console.log('Export report called with body:', req.body);
+      console.log('User:', req.user);
+
       const { report_type, filters = {} } = req.body;
+
+      if (!report_type) {
+        console.log('No report_type provided');
+        res.status(400).json({
+          success: false,
+          message: 'Report type is required'
+        } as ReportsResponse);
+        return;
+      }
+
+      console.log('Processing report type:', report_type);
 
       let exportData: any = {};
 
       switch (report_type) {
         case 'teams':
-          const teamResult = await ReportsController.getTeamReports(req, res);
-          return;
+          // Get team reports data without sending response
+          const { category, status, start_date, end_date } = req.query;
+
+          const teams = await prisma.team.findMany({
+            where: {
+              status: status as any || undefined
+            },
+            orderBy: { created_at: 'desc' }
+          });
+
+          const teamsWithDetails = await Promise.all(
+            teams.map(async (team) => {
+              const [memberCount, projectCount, mentorCount, inventoryCount, requestCount] = await Promise.all([
+                prisma.teamMember.count({ where: { team_id: team.id } }),
+                prisma.project.count({ where: { team_id: team.id } }),
+                prisma.mentorAssignment.count({ where: { team_id: team.id } }),
+                prisma.inventoryAssignment.count({ where: { team_id: team.id, returned_at: null } }),
+                prisma.materialRequest.count({ where: { team_id: team.id } })
+              ]);
+
+              return {
+                id: team.id,
+                team_name: team.team_name,
+                company_name: team.company_name,
+                status: team.status,
+                created_at: team.created_at,
+                member_count: memberCount,
+                project_count: projectCount,
+                mentor_count: mentorCount,
+                inventory_assignments: inventoryCount,
+                material_requests: requestCount
+              };
+            })
+          );
+
+          const summary = {
+            total_teams: teamsWithDetails.length,
+            active_teams: teamsWithDetails.filter(t => t.status === 'active').length,
+            pending_teams: teamsWithDetails.filter(t => t.status === 'pending').length,
+            completed_teams: teamsWithDetails.filter(t => t.status === 'inactive').length,
+            total_projects: teamsWithDetails.reduce((sum, team) => sum + team.project_count, 0),
+            total_members: teamsWithDetails.reduce((sum, team) => sum + team.member_count, 0),
+            total_mentors: teamsWithDetails.reduce((sum, team) => sum + team.mentor_count, 0)
+          };
+
+          exportData = {
+            summary,
+            teams: teamsWithDetails,
+            generated_at: new Date().toISOString()
+          };
+          break;
 
         case 'inventory':
-          const inventoryResult = await ReportsController.getInventoryReports(req, res);
-          return;
+          // Get inventory reports data
+          const inventoryItems = await prisma.inventoryItem.findMany({
+            include: {
+              inventory_assignments: {
+                where: { returned_at: null },
+                include: {
+                  team: {
+                    select: {
+                      id: true,
+                      team_name: true,
+                      company_name: true
+                    }
+                  }
+                }
+              }
+            },
+            orderBy: { created_at: 'desc' }
+          });
+
+          const inventorySummary = {
+            total_items: inventoryItems.length,
+            available_items: inventoryItems.filter(item => item.status === 'available').length,
+            low_stock_items: inventoryItems.filter(item => item.status === 'low_stock').length,
+            out_of_stock_items: inventoryItems.filter(item => item.status === 'out_of_stock').length,
+            total_quantity: inventoryItems.reduce((sum, item) => sum + item.total_quantity, 0),
+            assigned_quantity: inventoryItems.reduce((sum, item) => sum + item.inventory_assignments.length, 0),
+            available_quantity: inventoryItems.reduce((sum, item) => sum + Math.max(0, item.available_quantity), 0)
+          };
+
+          exportData = {
+            summary: inventorySummary,
+            inventory: inventoryItems,
+            generated_at: new Date().toISOString()
+          };
+          break;
 
         case 'projects':
-          const projectResult = await ReportsController.getProjectReports(req, res);
-          return;
+          // Get project reports data
+          const { category: projCategory, status: projStatus, team_id, start_date: projStart, end_date: projEnd } = req.query;
+
+          const where: any = {};
+          if (projCategory) where.category = projCategory as any;
+          if (projStatus) where.status = projStatus as any;
+          if (team_id) where.team_id = team_id as string;
+
+          const projects = await prisma.project.findMany({
+            where,
+            include: {
+              team: {
+                select: {
+                  id: true,
+                  team_name: true,
+                  company_name: true,
+                  status: true
+                }
+              },
+              project_files: {
+                select: {
+                  id: true,
+                  file_name: true,
+                  file_type: true,
+                  file_size: true,
+                  uploaded_at: true
+                },
+                orderBy: { uploaded_at: 'desc' }
+              }
+            },
+            orderBy: { created_at: 'desc' }
+          });
+
+          const projectSummary = {
+            total_projects: projects.length,
+            active_projects: projects.filter(p => p.status === 'active').length,
+            pending_projects: projects.filter(p => p.status === 'pending').length,
+            completed_projects: projects.filter(p => p.status === 'completed').length,
+            on_hold_projects: projects.filter(p => p.status === 'on_hold').length,
+            average_progress: projects.length > 0 ?
+              (projects.reduce((sum, p) => sum + p.progress, 0) / projects.length).toFixed(1) : '0',
+            total_files: projects.reduce((sum, p) => sum + p.project_files.length, 0)
+          };
+
+          exportData = {
+            summary: projectSummary,
+            projects,
+            generated_at: new Date().toISOString()
+          };
+          break;
 
         default:
           res.status(400).json({
@@ -403,11 +547,21 @@ export class ReportsController {
           return;
       }
 
+      // Return the export data
+      console.log('Export data prepared:', exportData);
+      res.json({
+        success: true,
+        message: `${report_type} report exported successfully`,
+        data: exportData
+      } as ReportsResponse);
+
     } catch (error) {
       console.error('Export report error:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : String(error));
       res.status(500).json({
         success: false,
-        message: 'Internal server error'
+        message: 'Internal server error',
+        details: error instanceof Error ? error.message : String(error)
       } as ReportsResponse);
     }
   }

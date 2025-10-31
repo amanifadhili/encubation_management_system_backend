@@ -18,6 +18,9 @@ interface ValidationError {
 // Validation middleware for request body
 export const validateBody = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
+    console.log('=== VALIDATION MIDDLEWARE ===');
+    console.log('Request body before validation:', JSON.stringify(req.body, null, 2));
+    
     const { error, value } = schema.validate(req.body, {
       abortEarly: false,
       stripUnknown: true,
@@ -25,6 +28,9 @@ export const validateBody = (schema: Joi.ObjectSchema) => {
     });
 
     if (error) {
+      console.log('VALIDATION FAILED!');
+      console.log('Validation errors:', error.details);
+      
       const errors: ValidationError[] = error.details.map(detail => ({
         field: detail.path.join('.'),
         message: detail.message,
@@ -38,10 +44,12 @@ export const validateBody = (schema: Joi.ObjectSchema) => {
         code: 'VALIDATION_ERROR'
       };
 
+      console.log('Sending 400 response:', JSON.stringify(result, null, 2));
       res.status(400).json(result);
       return;
     }
 
+    console.log('Validation passed! Sanitized value:', JSON.stringify(value, null, 2));
     // Replace request body with validated and sanitized data
     req.body = value;
     next();
@@ -51,6 +59,9 @@ export const validateBody = (schema: Joi.ObjectSchema) => {
 // Validation middleware for query parameters
 export const validateQuery = (schema: Joi.ObjectSchema) => {
   return (req: Request, res: Response, next: NextFunction): void => {
+    console.log('=== VALIDATION MIDDLEWARE ===');
+    console.log('Request query before validation:', JSON.stringify(req.query, null, 2));
+    
     const { error } = schema.validate(req.query, {
       abortEarly: false,
       stripUnknown: true,
@@ -255,12 +266,15 @@ export const createRateLimit = (windowMs: number, maxRequests: number) => {
 
     // Check if limit exceeded
     if (requestData.count >= maxRequests) {
-      res.status(429).json({
-        success: false,
-        message: 'Too many requests, please try again later',
-        code: 'RATE_LIMIT_EXCEEDED',
-        retryAfter: Math.ceil((requestData.resetTime - now) / 1000)
-      });
+      const retryAfterSeconds = Math.ceil((requestData.resetTime - now) / 1000);
+      res.status(429)
+        .header('Retry-After', String(retryAfterSeconds))
+        .json({
+          success: false,
+          message: 'Too many requests, please try again later',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: retryAfterSeconds
+        });
       return;
     }
 

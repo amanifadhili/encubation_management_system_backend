@@ -98,7 +98,7 @@ const handleMulterError = (error: any): {
   switch (error.code) {
     case 'LIMIT_FILE_SIZE':
       return {
-        statusCode: 400,
+        statusCode: 413,
         message: 'File size exceeds the maximum allowed limit',
         code: 'FILE_TOO_LARGE'
       };
@@ -358,7 +358,7 @@ errorHandler.handleMulterError = (error: any): {
   switch (error.code) {
     case 'LIMIT_FILE_SIZE':
       return {
-        statusCode: 400,
+        statusCode: 413,
         message: 'File size exceeds the maximum allowed limit',
         code: 'FILE_TOO_LARGE'
       };
