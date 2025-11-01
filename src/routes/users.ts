@@ -8,10 +8,10 @@ const router = Router();
 
 /**
  * @route GET /api/users
- * @desc Get all users
- * @access Private
+ * @desc Get all users (Director only)
+ * @access Private (Director)
  */
-router.get('/', AuthMiddleware.authenticate, UserController.getUsers);
+router.get('/', AuthMiddleware.authenticate, requireDirector, UserController.getUsers);
 
 /**
  * @route GET /api/users/:id

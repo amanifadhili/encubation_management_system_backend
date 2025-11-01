@@ -13,7 +13,8 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true
         }
       });
 
@@ -41,7 +42,8 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true
         }
       });
 
@@ -97,7 +99,8 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true
         }
       });
 
@@ -164,7 +167,8 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true
         }
       });
 
