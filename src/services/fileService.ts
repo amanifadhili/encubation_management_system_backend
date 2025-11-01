@@ -1,7 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { S3Client, DeleteObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
-import sharp from 'sharp';
+// import sharp from 'sharp';
+import * as Jimp from 'jimp';
 import prisma from '../config/database';
 
 export class FileService {
@@ -46,13 +47,20 @@ export class FileService {
       const thumbnailName = `thumb_${fileName}`;
       const thumbnailPath = path.join(this.thumbnailsDir, thumbnailName);
 
-      await sharp(filePath)
-        .resize(200, 200, {
-          fit: 'cover',
-          position: 'center'
-        })
-        .jpeg({ quality: 80 })
-        .toFile(thumbnailPath);
+      // await sharp(filePath)
+      //   .resize(200, 200, {
+      //     fit: 'cover',
+      //     position: 'center'
+      //   })
+      //   .jpeg({ quality: 80 })
+      //   .toFile(thumbnailPath);
+      // Use Jimp to resize and save the thumbnail
+const image = await (Jimp as any).read(filePath);
+      await image
+        .resize(200, 200) // Resize to 200x200
+        .quality(80) // Set JPEG quality to 80
+        .writeAsync(thumbnailPath); // Save the thumbnail
+
 
       return thumbnailName;
     } catch (error) {
