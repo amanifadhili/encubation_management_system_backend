@@ -1004,4 +1004,82 @@ export const validateParams = (schema: Joi.ObjectSchema) => {
     req.params = value;
     next();
   };
+}
+
+// User Schemas
+export const userSchemas = {
+ create: Joi.object({
+    name: Joi.string()
+      .min(2)
+      .max(100)
+      .trim()
+      .required()
+      .messages({
+        'string.empty': 'Name is required',
+        'string.min': 'Name must be at least 2 characters',
+        'string.max': 'Name cannot exceed 100 characters',
+        'any.required': 'Name is required'
+      }),
+
+    email: Joi.string()
+      .required()
+      .custom(validateEmail)
+      .messages({
+        'string.empty': 'Email is required',
+        'any.required': 'Email is required',
+        'string.pattern.base': 'Please enter a valid email address'
+      }),
+
+    password: Joi.string()
+      .required()
+      .custom(validatePassword)
+      .messages({
+        'string.empty': 'Password is required',
+        'any.required': 'Password is required',
+        'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+      }),
+
+    role: Joi.string()
+      .valid(...userRoles)
+      .required()
+      .messages({
+        'any.only': `Role must be one of: ${userRoles.join(', ')}`,
+        'any.required': 'Role is required'
+      })
+  }),
+
+  update: Joi.object({
+    name: Joi.string()
+      .min(2)
+      .max(100)
+      .trim()
+      .optional()
+      .messages({
+        'string.min': 'Name must be at least 2 characters',
+        'string.max': 'Name cannot exceed 100 characters'
+      }),
+
+    email: Joi.string()
+      .custom(validateEmail)
+      .optional()
+      .messages({
+        'string.pattern.base': 'Please enter a valid email address'
+      }),
+
+    role: Joi.string()
+      .valid(...userRoles)
+      .optional()
+      .messages({
+        'any.only': `Role must be one of: ${userRoles.join(', ')}`
+      }),
+
+    password: Joi.string()
+      .custom(validatePassword)
+      .optional()
+      .messages({
+        'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+      })
+  }).min(1).messages({
+    'object.min': 'At least one field must be provided for update'
+  })
 };
