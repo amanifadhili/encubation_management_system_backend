@@ -8,10 +8,10 @@ const router = Router();
 
 /**
  * @route GET /api/users
- * @desc Get all users
- * @access Private
+ * @desc Get all users (Director only)
+ * @access Private (Director)
  */
-router.get('/', AuthMiddleware.authenticate, UserController.getUsers);
+router.get('/', AuthMiddleware.authenticate, requireDirector, UserController.getUsers);
 
 /**
  * @route GET /api/users/:id
@@ -25,20 +25,20 @@ router.get('/:id', AuthMiddleware.authenticate, UserController.getUser);
  * @desc Create new user (Director only)
  * @access Private (Director)
  */
-router.post('/', requireDirector, validateBody(userSchemas.create), UserController.createUser);
+router.post('/', AuthMiddleware.authenticate, requireDirector, validateBody(userSchemas.create), UserController.createUser);
 
 /**
  * @route PUT /api/users/:id
  * @desc Update user (Director only)
  * @access Private (Director)
  */
-router.put('/:id', requireDirector, validateBody(userSchemas.update), UserController.updateUser);
+router.put('/:id', AuthMiddleware.authenticate, requireDirector, validateBody(userSchemas.update), UserController.updateUser);
 
 /**
  * @route DELETE /api/users/:id
  * @desc Delete user (Director only)
  * @access Private (Director)
  */
-router.delete('/:id', requireDirector, UserController.deleteUser);
+router.delete('/:id', AuthMiddleware.authenticate, requireDirector, UserController.deleteUser);
 
 export default router;

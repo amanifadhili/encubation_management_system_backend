@@ -8,18 +8,64 @@ export class UserController {
   // Get all users (for messaging - select user to message)
   static async getUsers(req: Request, res: Response) {
     try {
+      const { page = 1, limit = 10, search, role, sortBy = 'created_at', sortOrder = 'desc' } = req.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build where clause
+      const where: any = {};
+
+      // Role filter
+      if (role && role !== 'all') {
+        where.role = role;
+      }
+
+      // Search filter
+      if (search) {
+        where.OR = [
+          { name: { contains: search as string } },
+          { email: { contains: search as string } }
+        ];
+      }
+
+      // Build orderBy clause
+      const validSortFields = ['created_at', 'updated_at', 'name', 'email', 'role'];
+      const sortField = validSortFields.includes(sortBy as string) ? sortBy as string : 'created_at';
+      const orderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
+      const orderBy: any = { [sortField]: orderDirection };
+
+      // Get total count
+      const total = await prisma.user.count({ where });
+
+      // Get users with pagination
       const users = await prisma.user.findMany({
+        where,
         select: {
           id: true,
           name: true,
           email: true,
-          role: true
-        }
+          role: true,
+          created_at: true,
+          updated_at: true
+        },
+        orderBy,
+        skip,
+        take: limitNum
       });
+
+      const totalPages = Math.ceil(total / limitNum);
 
       res.json({
         success: true,
-        data: users
+        data: users,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: totalPages
+        }
       });
     } catch (error) {
       console.error('Get users error:', error);
@@ -41,7 +87,9 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true,
+          updated_at: true
         }
       });
 
@@ -97,7 +145,9 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true,
+          updated_at: true
         }
       });
 
@@ -164,7 +214,9 @@ export class UserController {
           id: true,
           name: true,
           email: true,
-          role: true
+          role: true,
+          created_at: true,
+          updated_at: true
         }
       });
 
