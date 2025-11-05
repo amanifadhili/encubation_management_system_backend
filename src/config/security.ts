@@ -64,11 +64,11 @@ interface SecurityConfig {
 // Default security configuration
 const defaultConfig: SecurityConfig = {
   cors: {
-    origin: process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [
-      'http://localhost:3000',
-      'http://localhost:5173',
-      'https://your-frontend-domain.com'
-    ],
+    origin: process.env.CORS_ORIGIN 
+      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+      : (() => {
+          throw new Error('CORS_ORIGIN environment variable is required. Please set it in your .env file.');
+        })(),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
