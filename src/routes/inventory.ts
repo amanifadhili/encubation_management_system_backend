@@ -14,7 +14,7 @@ router.get('/', AuthMiddleware.authenticate, InventoryController.getAllItems);
 /**
  * @route POST /api/inventory
  * @desc Create new inventory item
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.post('/', AuthMiddleware.authenticate, requireManager, InventoryController.createItem);
 
@@ -28,28 +28,28 @@ router.get('/:id', AuthMiddleware.authenticate, InventoryController.getItemById)
 /**
  * @route PUT /api/inventory/:id
  * @desc Update inventory item
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.put('/:id', AuthMiddleware.authenticate, requireManager, InventoryController.updateItem);
 
 /**
  * @route DELETE /api/inventory/:id
  * @desc Delete inventory item
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.delete('/:id', AuthMiddleware.authenticate, requireManager, InventoryController.deleteItem);
 
 /**
  * @route POST /api/inventory/:id/assign
  * @desc Assign inventory item to team
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.post('/:id/assign', AuthMiddleware.authenticate, requireManager, InventoryController.assignToTeam);
 
 /**
  * @route DELETE /api/inventory/:id/assign/:teamId
  * @desc Unassign inventory item from team
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.delete('/:id/assign/:teamId', AuthMiddleware.authenticate, requireManager, InventoryController.unassignFromTeam);
 

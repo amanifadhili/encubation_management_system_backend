@@ -201,7 +201,7 @@ export class InventoryController {
   }
 
   /**
-   * Create new inventory item (Manager only)
+   * Create new inventory item (Manager/Director only)
    */
   static async createItem(req: Request, res: Response): Promise<void> {
     try {
@@ -273,7 +273,7 @@ export class InventoryController {
   }
 
   /**
-   * Update inventory item (Manager only)
+   * Update inventory item (Manager/Director only)
    */
   static async updateItem(req: Request, res: Response): Promise<void> {
     try {
@@ -395,7 +395,7 @@ export class InventoryController {
   }
 
   /**
-   * Delete inventory item (Manager only)
+   * Delete inventory item (Manager/Director only)
    */
   static async deleteItem(req: Request, res: Response): Promise<void> {
     try {
@@ -450,7 +450,7 @@ export class InventoryController {
   }
 
   /**
-   * Assign inventory item to team (Manager only)
+   * Assign inventory item to team (Manager/Director only)
    */
   static async assignToTeam(req: Request, res: Response): Promise<void> {
     try {
@@ -597,7 +597,7 @@ export class InventoryController {
   }
 
   /**
-   * Unassign inventory item from team (Manager only)
+   * Unassign inventory item from team (Manager/Director only)
    */
   static async unassignFromTeam(req: Request, res: Response): Promise<void> {
     try {

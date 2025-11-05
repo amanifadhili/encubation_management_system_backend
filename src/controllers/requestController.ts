@@ -46,8 +46,8 @@ export class RequestController {
       const where: Prisma.MaterialRequestWhereInput = {};
 
       // Role-based filtering
-      if (req.user?.role === 'manager') {
-        // Managers can see all requests
+      if (req.user?.role === 'manager' || req.user?.role === 'director') {
+        // Managers and Directors can see all requests
       } else if (req.user?.role === 'incubator') {
         // Incubators can only see their team's requests
         where.team = {
@@ -305,7 +305,7 @@ export class RequestController {
   }
 
   /**
-   * Update request status (Manager only)
+   * Update request status (Manager/Director only)
    */
   static async updateRequestStatus(req: Request, res: Response): Promise<void> {
     try {
@@ -455,7 +455,7 @@ export class RequestController {
   }
 
   /**
-   * Delete request (Manager only, or team leader for their own pending requests)
+   * Delete request (Manager/Director only, or team leader for their own pending requests)
    */
   static async deleteRequest(req: Request, res: Response): Promise<void> {
     try {
@@ -486,7 +486,7 @@ export class RequestController {
       }
 
       // Check permissions
-      const canDelete = req.user?.role === 'manager' ||
+      const canDelete = req.user?.role === 'manager' || req.user?.role === 'director' ||
         (req.user?.role === 'incubator' &&
          request.status === 'pending' &&
          request.team.team_members.some(member => member.user_id === req.user?.userId && member.role === 'team_leader'));

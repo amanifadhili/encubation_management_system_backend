@@ -16,7 +16,7 @@ router.get('/', AuthMiddleware.authenticate, validateQuery(querySchemas.teamFilt
 /**
  * @route POST /api/teams
  * @desc Create new team
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.post('/', AuthMiddleware.authenticate, requireManager, validateBody(teamSchemas.create), TeamController.createTeam);
 
@@ -30,14 +30,14 @@ router.get('/:id', AuthMiddleware.authenticate, TeamController.getTeamById);
 /**
  * @route PUT /api/teams/:id
  * @desc Update team
- * @access Private (Manager, Incubator team leader)
+ * @access Private (Manager, Director, Incubator team leader)
  */
 router.put('/:id', AuthMiddleware.authenticate, validateBody(teamSchemas.update), TeamController.updateTeam);
 
 /**
  * @route DELETE /api/teams/:id
  * @desc Delete team
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.delete('/:id', AuthMiddleware.authenticate, requireManager, TeamController.deleteTeam);
 

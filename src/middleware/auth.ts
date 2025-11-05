@@ -180,6 +180,10 @@ export class AuthMiddleware {
 
 // Convenience middleware for specific roles
 export const requireDirector = AuthMiddleware.authorize('director');
+/**
+ * Middleware to require Manager or Director role
+ * Note: Director role has all Manager privileges, so this middleware allows both roles
+ */
 export const requireManager = AuthMiddleware.authorize('manager', 'director');
 export const requireMentor = AuthMiddleware.authorize('mentor', 'manager', 'director');
 export const requireIncubator = AuthMiddleware.authorize('incubator', 'mentor', 'manager', 'director');
