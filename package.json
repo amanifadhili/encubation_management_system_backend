@@ -4,6 +4,9 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
+    "prebuild": "npm run db:generate",
+    "postbuild": "echo Build completed successfully",
+    "clean": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\" || echo Cleaned",
     "dev": "nodemon --exec ts-node src/index.ts",
     "start": "node dist/index.js",
     "lint": "eslint src/**/*.ts",
