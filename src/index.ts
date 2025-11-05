@@ -25,6 +25,13 @@ import emailRoutes from './routes/email';
 // Load environment variables
 dotenv.config();
 
+// Debug: Log CORS configuration on startup
+console.log('🔧 CORS Configuration:', {
+  CORS_ORIGIN: process.env.CORS_ORIGIN,
+  SOCKET_CORS_ORIGIN: process.env.SOCKET_CORS_ORIGIN || 'Using CORS_ORIGIN',
+  NODE_ENV: process.env.NODE_ENV
+});
+
 const app = express();
 const server = createServer(app);
 const PORT = process.env.PORT || 3001;

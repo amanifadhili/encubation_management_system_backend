@@ -61,28 +61,34 @@ interface SecurityConfig {
   };
 }
 
-// Default security configuration
-const defaultConfig: SecurityConfig = {
-  cors: {
-    origin: process.env.CORS_ORIGIN 
-      ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
-      : (() => {
-          throw new Error('CORS_ORIGIN environment variable is required. Please set it in your .env file.');
-        })(),
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: [
-      'Origin',
-      'X-Requested-With',
-      'Content-Type',
-      'Accept',
-      'Authorization',
-      'Cache-Control',
-      'X-Access-Token'
-    ],
-    exposedHeaders: ['X-Total-Count', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
-    maxAge: 86400 // 24 hours
-  },
+// Function to get CORS origin from environment variable
+function getCorsOrigin(): string[] {
+  const corsOrigin = process.env.CORS_ORIGIN;
+  if (!corsOrigin) {
+    throw new Error('CORS_ORIGIN environment variable is required. Please set it in your .env file.');
+  }
+  return corsOrigin.split(',').map(origin => origin.trim());
+}
+
+// Default security configuration - CORS origin is loaded dynamically
+function getDefaultConfig(): SecurityConfig {
+  return {
+    cors: {
+      origin: getCorsOrigin(),
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+      allowedHeaders: [
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'Cache-Control',
+        'X-Access-Token'
+      ],
+      exposedHeaders: ['X-Total-Count', 'X-RateLimit-Limit', 'X-RateLimit-Remaining', 'X-RateLimit-Reset'],
+      maxAge: 86400 // 24 hours
+    },
 
   helmet: {
     contentSecurityPolicy: {
@@ -148,17 +154,18 @@ const defaultConfig: SecurityConfig = {
     standardHeaders: true,
     legacyHeaders: false
   }
-};
+  };
+}
 
 // Create security middleware
 export class SecurityMiddleware {
-  private static config: SecurityConfig = defaultConfig;
+  private static config: SecurityConfig = getDefaultConfig();
 
   /**
    * Configure security settings
    */
   static configure(config?: Partial<SecurityConfig>): void {
-    this.config = { ...defaultConfig, ...config };
+    this.config = { ...getDefaultConfig(), ...config };
   }
 
   /**
@@ -217,7 +224,22 @@ export class SecurityMiddleware {
    * Apply CORS configuration
    */
   private static applyCors(app: Application): void {
-    app.use(cors(this.config.cors));
+    // Reload CORS origin from environment to ensure it's current
+    const corsOrigin = getCorsOrigin();
+    const corsConfig = {
+      ...this.config.cors,
+      origin: corsOrigin
+    };
+    
+    // Debug logging
+    console.log('🌐 CORS Configuration Applied:', {
+      origin: corsConfig.origin,
+      methods: corsConfig.methods,
+      credentials: corsConfig.credentials,
+      'CORS_ORIGIN from env': process.env.CORS_ORIGIN
+    });
+    
+    app.use(cors(corsConfig));
   }
 
   /**
@@ -264,7 +286,7 @@ export class SecurityMiddleware {
   /**
    * Create custom rate limiter
    */
-  static createCustomRateLimit(options: Partial<typeof defaultConfig.rateLimit>) {
+  static createCustomRateLimit(options: Partial<ReturnType<typeof getDefaultConfig>['rateLimit']>) {
     return rateLimit({ ...this.config.rateLimit, ...options });
   }
 }
@@ -474,4 +496,4 @@ export interface SecurityEvent {
 }
 
 // Export default configuration
-export { defaultConfig as securityConfig };
+export { getDefaultConfig as securityConfig };
