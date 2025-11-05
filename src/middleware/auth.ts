@@ -20,7 +20,18 @@ export class AuthMiddleware {
       const authHeader = req.headers.authorization;
       const token = JWTUtils.extractTokenFromHeader(authHeader);
 
+      // Debug logging
+      console.log('🔐 Auth Middleware:', {
+        method: req.method,
+        url: req.url,
+        hasAuthHeader: !!authHeader,
+        hasToken: !!token,
+        origin: req.headers.origin,
+        'user-agent': req.headers['user-agent']?.substring(0, 50)
+      });
+
       if (!token) {
+        console.error('❌ No token found in request');
         res.status(401).json({
           success: false,
           message: 'Access token is required',
@@ -29,7 +40,21 @@ export class AuthMiddleware {
       }
 
       // Verify token
-      const decoded = JWTUtils.verifyToken(token);
+      let decoded: any;
+      try {
+        decoded = JWTUtils.verifyToken(token);
+        console.log('✅ Token verified:', {
+          userId: decoded.userId,
+          email: decoded.email,
+          role: decoded.role
+        });
+      } catch (tokenError: any) {
+        console.error('❌ Token verification failed:', {
+          error: tokenError.message,
+          tokenPreview: token.substring(0, 20) + '...'
+        });
+        throw tokenError;
+      }
 
       // Check if user still exists in database
       const user = await prisma.user.findUnique({
@@ -38,6 +63,7 @@ export class AuthMiddleware {
       });
 
       if (!user) {
+        console.error('❌ User not found in database:', decoded.userId);
         res.status(401).json({
           success: false,
           message: 'User not found',
@@ -53,12 +79,23 @@ export class AuthMiddleware {
         name: user.name,
       };
 
+      console.log('✅ Authentication successful:', {
+        userId: user.id,
+        email: user.email,
+        role: user.role
+      });
+
       next();
-    } catch (error) {
-      console.error('Authentication error:', error);
+    } catch (error: any) {
+      console.error('❌ Authentication error:', {
+        message: error.message,
+        stack: error.stack,
+        method: req.method,
+        url: req.url
+      });
       res.status(401).json({
         success: false,
-        message: 'Invalid or expired token',
+        message: error.message || 'Invalid or expired token',
       });
     }
   };
@@ -68,7 +105,16 @@ export class AuthMiddleware {
    */
   static authorize = (...allowedRoles: string[]) => {
     return (req: Request, res: Response, next: NextFunction): void => {
+      console.log('🔒 Authorization Check:', {
+        method: req.method,
+        url: req.url,
+        hasUser: !!req.user,
+        userRole: req.user?.role,
+        allowedRoles: allowedRoles
+      });
+
       if (!req.user) {
+        console.error('❌ No user in request - authorization failed');
         res.status(401).json({
           success: false,
           message: 'Authentication required',
@@ -77,6 +123,10 @@ export class AuthMiddleware {
       }
 
       if (!allowedRoles.includes(req.user.role)) {
+        console.error('❌ Insufficient permissions:', {
+          userRole: req.user.role,
+          allowedRoles: allowedRoles
+        });
         res.status(403).json({
           success: false,
           message: 'Insufficient permissions',
@@ -85,6 +135,11 @@ export class AuthMiddleware {
         });
         return;
       }
+
+      console.log('✅ Authorization successful:', {
+        userRole: req.user.role,
+        allowedRoles: allowedRoles
+      });
 
       next();
     };
