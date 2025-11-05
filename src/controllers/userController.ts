@@ -330,4 +330,172 @@ export class UserController {
       });
     }
   }
+
+  /**
+   * Get current user's profile
+   * GET /api/users/profile
+   */
+  static async getProfile(req: Request, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Profile retrieved successfully',
+        data: { user }
+      });
+    } catch (error) {
+      console.error('Get profile error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch profile'
+      });
+    }
+  }
+
+  /**
+   * Update current user's profile
+   * PUT /api/users/profile
+   */
+  static async updateProfile(req: Request, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+      }
+
+      const { name, email, password, currentPassword } = req.body;
+
+      // Get current user
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.user.userId }
+      });
+
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // If changing password, verify current password
+      if (password) {
+        if (!currentPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Current password is required to change password'
+          });
+        }
+
+        const isValidPassword = await PasswordUtils.verify(
+          currentPassword,
+          currentUser.password_hash
+        );
+
+        if (!isValidPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Current password is incorrect'
+          });
+        }
+      }
+
+      // Check if email is being changed and if it's already taken
+      if (email && email.toLowerCase() !== currentUser.email) {
+        const emailExists = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() }
+        });
+
+        if (emailExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email is already taken'
+          });
+        }
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email.toLowerCase();
+      if (password) {
+        updateData.password_hash = await PasswordUtils.hash(password);
+      }
+
+      // Update user
+      const updatedUser = await prisma.user.update({
+        where: { id: req.user.userId },
+        data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      // Send email notification if email was changed
+      if (email && email.toLowerCase() !== currentUser.email) {
+        try {
+          await emailService.sendEmail({
+            to: email.toLowerCase(),
+            subject: 'Email Address Updated',
+            template: 'user/user-updated',
+            emailType: 'user_updated',
+            userId: req.user.userId,
+            templateData: {
+              userName: updatedUser.name,
+              userEmail: updatedUser.email,
+              changes: 'Your email address has been updated',
+              appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:5173',
+              currentYear: new Date().getFullYear()
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send email notification:', emailError);
+          // Don't fail profile update if email fails
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: updatedUser
+      });
+    } catch (error) {
+      console.error('Update profile error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile'
+      });
+    }
+  }
 }
