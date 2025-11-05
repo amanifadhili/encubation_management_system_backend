@@ -29,7 +29,13 @@ export class SocketHandler {
   constructor(server: HTTPServer) {
     this.io = new SocketIOServer(server, {
       cors: {
-        origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:3000', 'http://localhost:5173'],
+        origin: process.env.SOCKET_CORS_ORIGIN 
+          ? process.env.SOCKET_CORS_ORIGIN.split(',').map(origin => origin.trim())
+          : process.env.CORS_ORIGIN 
+            ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+            : (() => {
+                throw new Error('SOCKET_CORS_ORIGIN or CORS_ORIGIN environment variable is required. Please set at least one in your .env file.');
+              })(),
         methods: ['GET', 'POST'],
         credentials: true
       },
