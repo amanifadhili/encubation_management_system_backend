@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { MaterialRequest, Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import emailService from '../services/emailService';
+import { getManagerEmails, getTeamNotificationRecipients } from '../utils/emailHelpers';
 
 interface CreateRequestRequest {
   item_name: string;
@@ -255,6 +257,38 @@ export class RequestController {
         }
       });
 
+      // Send request created emails
+      try {
+        const managerEmails = await getManagerEmails();
+        const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+
+        const emailPromises = managerEmails.map(managerEmail =>
+          emailService.sendEmail({
+            to: managerEmail,
+            subject: 'New Material Request Created',
+            template: 'request/request-created',
+            templateData: {
+              itemName: request.item_name,
+              description: request.description || '',
+              requesterName: request.requester.name,
+              requesterEmail: request.requester.email,
+              teamName: request.team.team_name,
+              companyName: request.team.company_name || '',
+              requestedDate: new Date(request.requested_at).toLocaleDateString(),
+              requestId: request.id,
+              appUrl,
+              currentYear: new Date().getFullYear(),
+              subject: 'New Material Request Created'
+            }
+          })
+        );
+
+        await Promise.all(emailPromises);
+      } catch (emailError) {
+        console.error('Failed to send request created emails:', emailError);
+        // Don't fail request creation if email fails
+      }
+
       res.status(201).json({
         success: true,
         message: 'Material request created successfully',
@@ -341,6 +375,66 @@ export class RequestController {
           }
         }
       });
+
+      // Send request status update emails
+      try {
+        const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+        const templateName = status === 'approved' ? 'request/request-approved' : 'request/request-declined';
+
+        // Email to requester
+        await emailService.sendEmail({
+          to: request.requester.email,
+          subject: `Material Request ${status === 'approved' ? 'Approved' : 'Declined'}`,
+          template: templateName,
+          templateData: {
+            requesterName: request.requester.name,
+            itemName: request.item_name,
+            description: request.description || '',
+            teamName: request.team.team_name,
+            requestedDate: new Date(request.requested_at).toLocaleDateString(),
+            reviewedDate: request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : '',
+            reviewerName: request.reviewer?.name || 'Manager',
+            notes: notes || '',
+            requestId: request.id,
+            appUrl,
+            currentYear: new Date().getFullYear(),
+            subject: `Material Request ${status === 'approved' ? 'Approved' : 'Declined'}`
+          }
+        });
+
+        // Also notify team members if approved
+        if (status === 'approved') {
+          const teamRecipients = await getTeamNotificationRecipients(request.team_id, false);
+          const teamEmailPromises = teamRecipients
+            .filter(email => email !== request.requester.email) // Don't email requester again
+            .map(recipient =>
+              emailService.sendEmail({
+                to: recipient,
+                subject: 'Material Request Approved for Your Team',
+                template: 'request/request-approved',
+                templateData: {
+                  requesterName: request.requester.name,
+                  itemName: request.item_name,
+                  description: request.description || '',
+                  teamName: request.team.team_name,
+                  requestedDate: new Date(request.requested_at).toLocaleDateString(),
+                  reviewedDate: request.reviewed_at ? new Date(request.reviewed_at).toLocaleDateString() : '',
+                  reviewerName: request.reviewer?.name || 'Manager',
+                  notes: notes || '',
+                  requestId: request.id,
+                  appUrl,
+                  currentYear: new Date().getFullYear(),
+                  subject: 'Material Request Approved for Your Team'
+                }
+              })
+            );
+
+          await Promise.all(teamEmailPromises);
+        }
+      } catch (emailError) {
+        console.error('Failed to send request status update emails:', emailError);
+        // Don't fail request update if email fails
+      }
 
       // If approved, we could trigger inventory assignment here
       // For now, just update the status

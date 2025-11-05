@@ -1,0 +1,30 @@
+{{!< layouts/main}}
+
+<h2>New Team Created</h2>
+
+<p>Hello,</p>
+
+<p>A new team has been created in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Team Details:</h3>
+  <p><strong>Team Name:</strong> {{teamName}}</p>
+  {{#if companyName}}
+  <p><strong>Company Name:</strong> {{companyName}}</p>
+  {{/if}}
+  <p><strong>Status:</strong> {{status}}</p>
+  <p><strong>Created:</strong> {{createdDate}}</p>
+</div>
+
+{{#if teamLeaderName}}
+<div style="background-color: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+  <p><strong>Team Leader:</strong> {{teamLeaderName}} ({{teamLeaderEmail}})</p>
+</div>
+{{/if}}
+
+<p>The team is now active in the system. Team members can start working on projects and requesting resources.</p>
+
+<a href="{{appUrl}}/teams/{{teamId}}" class="button">View Team</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

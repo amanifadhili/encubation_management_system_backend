@@ -1,0 +1,29 @@
+{{!< layouts/main}}
+
+<h2>New Material Request Created</h2>
+
+<p>Hello,</p>
+
+<p>A new material request has been created in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Request Details:</h3>
+  <p><strong>Item Name:</strong> {{itemName}}</p>
+  {{#if description}}
+  <p><strong>Description:</strong> {{description}}</p>
+  {{/if}}
+  <p><strong>Requested By:</strong> {{requesterName}} ({{requesterEmail}})</p>
+  <p><strong>Team:</strong> {{teamName}}</p>
+  {{#if companyName}}
+  <p><strong>Company:</strong> {{companyName}}</p>
+  {{/if}}
+  <p><strong>Requested Date:</strong> {{requestedDate}}</p>
+  <p><strong>Status:</strong> <span style="color: #ff9800; font-weight: bold;">Pending</span></p>
+</div>
+
+<p>Please review this request and take appropriate action.</p>
+
+<a href="{{appUrl}}/requests/{{requestId}}" class="button">View Request</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

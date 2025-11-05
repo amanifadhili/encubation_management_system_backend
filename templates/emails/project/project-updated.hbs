@@ -1,0 +1,44 @@
+{{!< layouts/main}}
+
+<h2>Project Updated</h2>
+
+<p>Hello,</p>
+
+<p>The project <strong>{{projectName}}</strong> has been updated in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Updated Information:</h3>
+  {{#if updatedName}}
+  <p><strong>Project Name:</strong> {{updatedName}}</p>
+  {{/if}}
+  {{#if updatedDescription}}
+  <p><strong>Description:</strong> {{updatedDescription}}</p>
+  {{/if}}
+  {{#if updatedCategory}}
+  <p><strong>Category:</strong> {{updatedCategory}}</p>
+  {{/if}}
+  {{#if updatedStatus}}
+  <p><strong>Status:</strong> <span style="color: {{statusColor}}; font-weight: bold;">{{updatedStatus}}</span></p>
+  {{/if}}
+  {{#if updatedProgress}}
+  <p><strong>Progress:</strong> {{updatedProgress}}%</p>
+  <div style="background-color: #e0e0e0; border-radius: 10px; height: 20px; margin-top: 5px;">
+    <div style="background-color: #4CAF50; height: 100%; width: {{updatedProgress}}%; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px;">
+      {{updatedProgress}}%
+    </div>
+  </div>
+  {{/if}}
+</div>
+
+{{#if updateNotes}}
+<div style="background-color: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2196F3;">
+  <p><strong>Update Notes:</strong> {{updateNotes}}</p>
+</div>
+{{/if}}
+
+<p>Please review the changes and continue working on the project.</p>
+
+<a href="{{appUrl}}/projects/{{projectId}}" class="button">View Project</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Team, TeamMember, User, Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import emailService from '../services/emailService';
+import { getTeamNotificationRecipients, getTeamLeaderEmail, getTeamMentorEmails } from '../utils/emailHelpers';
 
 interface CreateTeamRequest {
   team_name: string;
@@ -295,6 +297,37 @@ export class TeamController {
         }
       });
 
+      // Send team created emails
+      try {
+        const recipients = await getTeamNotificationRecipients(team.id, true);
+        const teamLeader = team.team_members.find(m => m.role === 'team_leader');
+        
+        const emailPromises = recipients.map(recipient => 
+          emailService.sendEmail({
+            to: recipient,
+            subject: 'New Team Created',
+            template: 'team/team-created',
+            templateData: {
+              teamName: team.team_name,
+              companyName: team.company_name || '',
+              status: team.status.charAt(0).toUpperCase() + team.status.slice(1),
+              createdDate: new Date(team.created_at).toLocaleDateString(),
+              teamLeaderName: teamLeader?.user.name || '',
+              teamLeaderEmail: teamLeader?.user.email || '',
+              teamId: team.id,
+              appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+              currentYear: new Date().getFullYear(),
+              subject: 'New Team Created'
+            }
+          })
+        );
+
+        await Promise.all(emailPromises);
+      } catch (emailError) {
+        console.error('Failed to send team created emails:', emailError);
+        // Don't fail team creation if email fails
+      }
+
       res.status(201).json({
         success: true,
         message: 'Team created successfully',
@@ -387,6 +420,50 @@ export class TeamController {
           }
         }
       });
+
+      // Send team status update emails if status changed
+      if (status && status !== existingTeam.status) {
+        try {
+          const recipients = await getTeamNotificationRecipients(team.id, true);
+          const statusColors: Record<string, string> = {
+            active: '#4CAF50',
+            pending: '#ff9800',
+            inactive: '#f44336'
+          };
+
+          // Status-specific messages
+          const statusMessages: Record<string, string> = {
+            active: 'Your team is now active! You can start working on projects and requesting resources.',
+            pending: 'Your team status is pending. Please wait for approval from the management.',
+            inactive: 'Your team has been marked as inactive. Please contact the management if you have any questions.'
+          };
+
+          const emailPromises = recipients.map(recipient =>
+            emailService.sendEmail({
+              to: recipient,
+              subject: 'Team Status Updated',
+              template: 'team/team-status-updated',
+              templateData: {
+                teamName: team.team_name,
+                companyName: team.company_name || '',
+                previousStatus: existingTeam.status.charAt(0).toUpperCase() + existingTeam.status.slice(1),
+                newStatus: team.status.charAt(0).toUpperCase() + team.status.slice(1),
+                statusColor: statusColors[team.status] || '#333',
+                statusMessage: statusMessages[team.status] || 'Please check the team dashboard for more information.',
+                teamId: team.id,
+                appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+                currentYear: new Date().getFullYear(),
+                subject: 'Team Status Updated'
+              }
+            })
+          );
+
+          await Promise.all(emailPromises);
+        } catch (emailError) {
+          console.error('Failed to send team status update emails:', emailError);
+          // Don't fail team update if email fails
+        }
+      }
 
       res.json({
         success: true,
@@ -611,6 +688,54 @@ export class TeamController {
           }
         }
       });
+
+      // Send member added emails
+      try {
+        const teamLeader = await getTeamLeaderEmail(id);
+        const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+
+        // Email to new member
+        await emailService.sendEmail({
+          to: newUser.email,
+          subject: `Welcome to ${team.team_name}!`,
+          template: 'team/member-added',
+          templateData: {
+            memberName: name,
+            memberEmail: email,
+            memberRole: 'Member',
+            teamName: team.team_name,
+            companyName: team.company_name || '',
+            teamLeaderName: teamLeader ? (await prisma.user.findUnique({ where: { email: teamLeader }, select: { name: true } }))?.name : '',
+            teamLeaderEmail: teamLeader || '',
+            password: tempPassword,
+            appUrl,
+            currentYear: new Date().getFullYear(),
+            subject: `Welcome to ${team.team_name}!`
+          }
+        });
+
+        // Email to team leader (if exists and different from new member)
+        if (teamLeader && teamLeader !== email) {
+          await emailService.sendEmail({
+            to: teamLeader,
+            subject: `New Member Added to ${team.team_name}`,
+            template: 'team/member-added',
+            templateData: {
+              memberName: name,
+              memberEmail: email,
+              memberRole: 'Member',
+              teamName: team.team_name,
+              companyName: team.company_name || '',
+              appUrl,
+              currentYear: new Date().getFullYear(),
+              subject: `New Member Added to ${team.team_name}`
+            }
+          });
+        }
+      } catch (emailError) {
+        console.error('Failed to send member added emails:', emailError);
+        // Don't fail member addition if email fails
+      }
 
       res.status(201).json({
         success: true,

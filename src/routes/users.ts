@@ -14,18 +14,32 @@ const router = Router();
 router.get('/', AuthMiddleware.authenticate, requireDirector, UserController.getUsers);
 
 /**
- * @route GET /api/users/:id
- * @desc Get user by ID
- * @access Private
- */
-router.get('/:id', AuthMiddleware.authenticate, UserController.getUser);
-
-/**
  * @route POST /api/users
  * @desc Create new user (Director only)
  * @access Private (Director)
  */
 router.post('/', AuthMiddleware.authenticate, requireDirector, validateBody(userSchemas.create), UserController.createUser);
+
+/**
+ * @route GET /api/users/profile
+ * @desc Get current user's profile
+ * @access Private (All authenticated users)
+ */
+router.get('/profile', AuthMiddleware.authenticate, UserController.getProfile);
+
+/**
+ * @route PUT /api/users/profile
+ * @desc Update current user's profile
+ * @access Private (All authenticated users)
+ */
+router.put('/profile', AuthMiddleware.authenticate, UserController.updateProfile);
+
+/**
+ * @route GET /api/users/:id
+ * @desc Get user by ID
+ * @access Private
+ */
+router.get('/:id', AuthMiddleware.authenticate, UserController.getUser);
 
 /**
  * @route PUT /api/users/:id

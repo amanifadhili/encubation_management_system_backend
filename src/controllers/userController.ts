@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { PasswordUtils } from '../utils/password';
+import emailService from '../services/emailService';
 
 const prisma = new PrismaClient();
 
@@ -151,6 +152,29 @@ export class UserController {
         }
       });
 
+      // Send welcome email
+      try {
+        await emailService.sendEmail({
+          to: newUser.email,
+          subject: 'Welcome to Incubation Management System',
+          template: 'user/user-created',
+          emailType: 'user_created',
+          userId: newUser.id,
+          templateData: {
+            userName: newUser.name,
+            userEmail: newUser.email,
+            role: newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1),
+            password: password, // Send password only in email for new users
+            appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+            currentYear: new Date().getFullYear(),
+            subject: 'Welcome to Incubation Management System'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // Don't fail user creation if email fails
+      }
+
       res.status(201).json({
         success: true,
         message: 'User created successfully',
@@ -220,6 +244,36 @@ export class UserController {
         }
       });
 
+      // Send update notification email
+      try {
+        const updateDataForEmail: any = {};
+        if (name && name !== existingUser.name) updateDataForEmail.updatedName = name;
+        if (email && email.toLowerCase() !== existingUser.email) updateDataForEmail.updatedEmail = email.toLowerCase();
+        if (role && role !== existingUser.role) updateDataForEmail.updatedRole = role.charAt(0).toUpperCase() + role.slice(1);
+        if (password) updateDataForEmail.passwordChanged = true;
+
+                  // Only send email if something actually changed
+          if (Object.keys(updateDataForEmail).length > 0) {
+            await emailService.sendEmail({
+              to: updatedUser.email,
+              subject: 'Account Information Updated',
+              template: 'user/user-updated',
+              emailType: 'user_updated',
+              userId: updatedUser.id,
+              templateData: {
+                userName: updatedUser.name,
+                ...updateDataForEmail,
+                appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+                currentYear: new Date().getFullYear(),
+                subject: 'Account Information Updated'
+              }
+            });
+          }
+      } catch (emailError) {
+        console.error('Failed to send update email:', emailError);
+        // Don't fail user update if email fails
+      }
+
       res.json({
         success: true,
         message: 'User updated successfully',
@@ -273,6 +327,174 @@ export class UserController {
       res.status(500).json({
         success: false,
         message: 'Failed to delete user'
+      });
+    }
+  }
+
+  /**
+   * Get current user's profile
+   * GET /api/users/profile
+   */
+  static async getProfile(req: Request, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Profile retrieved successfully',
+        data: { user }
+      });
+    } catch (error) {
+      console.error('Get profile error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch profile'
+      });
+    }
+  }
+
+  /**
+   * Update current user's profile
+   * PUT /api/users/profile
+   */
+  static async updateProfile(req: Request, res: Response) {
+    try {
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authenticated'
+        });
+      }
+
+      const { name, email, password, currentPassword } = req.body;
+
+      // Get current user
+      const currentUser = await prisma.user.findUnique({
+        where: { id: req.user.userId }
+      });
+
+      if (!currentUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      // If changing password, verify current password
+      if (password) {
+        if (!currentPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Current password is required to change password'
+          });
+        }
+
+        const isValidPassword = await PasswordUtils.verify(
+          currentPassword,
+          currentUser.password_hash
+        );
+
+        if (!isValidPassword) {
+          return res.status(400).json({
+            success: false,
+            message: 'Current password is incorrect'
+          });
+        }
+      }
+
+      // Check if email is being changed and if it's already taken
+      if (email && email.toLowerCase() !== currentUser.email) {
+        const emailExists = await prisma.user.findUnique({
+          where: { email: email.toLowerCase() }
+        });
+
+        if (emailExists) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email is already taken'
+          });
+        }
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+      if (name) updateData.name = name;
+      if (email) updateData.email = email.toLowerCase();
+      if (password) {
+        updateData.password_hash = await PasswordUtils.hash(password);
+      }
+
+      // Update user
+      const updatedUser = await prisma.user.update({
+        where: { id: req.user.userId },
+        data: updateData,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      // Send email notification if email was changed
+      if (email && email.toLowerCase() !== currentUser.email) {
+        try {
+          await emailService.sendEmail({
+            to: email.toLowerCase(),
+            subject: 'Email Address Updated',
+            template: 'user/user-updated',
+            emailType: 'user_updated',
+            userId: req.user.userId,
+            templateData: {
+              userName: updatedUser.name,
+              userEmail: updatedUser.email,
+              changes: 'Your email address has been updated',
+              appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:5173',
+              currentYear: new Date().getFullYear()
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send email notification:', emailError);
+          // Don't fail profile update if email fails
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Profile updated successfully',
+        data: updatedUser
+      });
+    } catch (error) {
+      console.error('Update profile error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update profile'
       });
     }
   }

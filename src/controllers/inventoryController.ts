@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { InventoryItem, InventoryAssignment, Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import emailService from '../services/emailService';
+import { getTeamNotificationRecipients } from '../utils/emailHelpers';
 
 interface CreateInventoryItemRequest {
   name: string;
@@ -528,6 +530,7 @@ export class InventoryController {
             select: {
               id: true,
               name: true,
+              description: true,
               total_quantity: true
             }
           },
@@ -540,6 +543,43 @@ export class InventoryController {
           }
         }
       });
+
+      // Send inventory assignment emails
+      try {
+        const recipients = await getTeamNotificationRecipients(team_id, false);
+        const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+        
+        // Get assigned by user info
+        const assignedByUser = await prisma.user.findUnique({
+          where: { id: req.user!.userId },
+          select: { name: true }
+        });
+
+        const emailPromises = recipients.map(recipient =>
+          emailService.sendEmail({
+            to: recipient,
+            subject: 'Inventory Item Assigned to Your Team',
+            template: 'inventory/inventory-assigned',
+            templateData: {
+              itemName: assignment.item.name,
+              itemDescription: assignment.item.description || '',
+              quantity: quantity.toString(),
+              teamName: assignment.team.team_name,
+              companyName: assignment.team.company_name || '',
+              assignedDate: new Date(assignment.assigned_at).toLocaleDateString(),
+              assignedBy: assignedByUser?.name || 'Manager',
+              appUrl,
+              currentYear: new Date().getFullYear(),
+              subject: 'Inventory Item Assigned to Your Team'
+            }
+          })
+        );
+
+        await Promise.all(emailPromises);
+      } catch (emailError) {
+        console.error('Failed to send inventory assignment emails:', emailError);
+        // Don't fail assignment if email fails
+      }
 
       res.status(201).json({
         success: true,
