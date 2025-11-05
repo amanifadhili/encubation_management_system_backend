@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Project, ProjectFile, User, Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import emailService from '../services/emailService';
+import { getTeamNotificationRecipients, getTeamMentorEmails } from '../utils/emailHelpers';
 
 interface CreateProjectRequest {
   name: string;
@@ -274,6 +276,60 @@ export class ProjectController {
         }
       });
 
+      // Send project created emails
+      try {
+        const recipients = await getTeamNotificationRecipients(project.team_id, true);
+        const mentors = await getTeamMentorEmails(project.team_id);
+        
+        // Get mentor info if exists
+        let mentorName = '';
+        let mentorEmail = '';
+        if (mentors.length > 0) {
+          const mentorUser = await prisma.user.findUnique({
+            where: { email: mentors[0] },
+            select: { name: true, email: true }
+          });
+          if (mentorUser) {
+            mentorName = mentorUser.name;
+            mentorEmail = mentorUser.email;
+          }
+        }
+
+        const statusColors: Record<string, string> = {
+          active: '#4CAF50',
+          pending: '#ff9800',
+          completed: '#2196F3',
+          on_hold: '#f44336'
+        };
+
+        const emailPromises = recipients.map(recipient =>
+          emailService.sendEmail({
+            to: recipient,
+            subject: 'New Project Created',
+            template: 'project/project-created',
+            templateData: {
+              projectName: project.name,
+              description: project.description || '',
+              category: project.category,
+              status: project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('_', ' '),
+              teamName: project.team.team_name,
+              mentorName: mentorName || '',
+              mentorEmail: mentorEmail || '',
+              createdDate: new Date(project.created_at).toLocaleDateString(),
+              projectId: project.id,
+              appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+              currentYear: new Date().getFullYear(),
+              subject: 'New Project Created'
+            }
+          })
+        );
+
+        await Promise.all(emailPromises);
+      } catch (emailError) {
+        console.error('Failed to send project created emails:', emailError);
+        // Don't fail project creation if email fails
+      }
+
       res.status(201).json({
         success: true,
         message: 'Project created successfully',
@@ -363,6 +419,46 @@ export class ProjectController {
           }
         }
       });
+
+      // Send project update emails if any significant changes
+      const hasSignificantChange = name || status || progress !== undefined || description !== undefined || category;
+      if (hasSignificantChange) {
+        try {
+          const recipients = await getTeamNotificationRecipients(project.team_id, true);
+          const statusColors: Record<string, string> = {
+            active: '#4CAF50',
+            pending: '#ff9800',
+            completed: '#2196F3',
+            on_hold: '#f44336'
+          };
+
+          const emailPromises = recipients.map(recipient =>
+            emailService.sendEmail({
+              to: recipient,
+              subject: 'Project Updated',
+              template: 'project/project-updated',
+              templateData: {
+                projectName: project.name,
+                updatedName: name || project.name,
+                updatedDescription: description !== undefined ? description : project.description || '',
+                updatedCategory: category ? category : project.category,
+                updatedStatus: status ? status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ') : project.status.charAt(0).toUpperCase() + project.status.slice(1).replace('_', ' '),
+                updatedProgress: progress !== undefined ? progress : project.progress,
+                statusColor: statusColors[project.status] || '#333',
+                projectId: project.id,
+                appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+                currentYear: new Date().getFullYear(),
+                subject: 'Project Updated'
+              }
+            })
+          );
+
+          await Promise.all(emailPromises);
+        } catch (emailError) {
+          console.error('Failed to send project update emails:', emailError);
+          // Don't fail project update if email fails
+        }
+      }
 
       res.json({
         success: true,

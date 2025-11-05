@@ -1,0 +1,30 @@
+{{!< layouts/main}}
+
+<h2>Account Information Updated</h2>
+
+<p>Hello {{userName}},</p>
+
+<p>Your account information has been updated in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Updated Information:</h3>
+  {{#if updatedName}}
+  <p><strong>Name:</strong> {{updatedName}}</p>
+  {{/if}}
+  {{#if updatedEmail}}
+  <p><strong>Email:</strong> {{updatedEmail}}</p>
+  {{/if}}
+  {{#if updatedRole}}
+  <p><strong>Role:</strong> {{updatedRole}}</p>
+  {{/if}}
+  {{#if passwordChanged}}
+  <p><strong>Password:</strong> Your password has been changed</p>
+  {{/if}}
+</div>
+
+<p>The changes are now active. If you did not make these changes, please contact your system administrator immediately.</p>
+
+<a href="{{appUrl}}" class="button">View Account</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

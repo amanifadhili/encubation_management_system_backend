@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Announcement } from '@prisma/client';
 import prisma from '../config/database';
 import { emitToRole } from '../services/socketService';
+import emailService from '../services/emailService';
 
 interface CreateAnnouncementRequest {
   title: string;
@@ -172,6 +173,40 @@ export class AnnouncementController {
 
       // Send real-time announcement to all users
       await AnnouncementController.broadcastAnnouncement(announcement);
+
+      // Send announcement emails to all users
+      try {
+        const allUsers = await prisma.user.findMany({
+          select: {
+            email: true
+          }
+        });
+
+        const appUrl = process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000';
+
+        const emailPromises = allUsers.map(user =>
+          emailService.sendEmail({
+            to: user.email,
+            subject: `New Announcement: ${title}`,
+            template: 'announcement/announcement-created',
+            templateData: {
+              title: announcement.title,
+              content: announcement.content,
+              authorName: announcement.author.name,
+              createdDate: new Date(announcement.created_at).toLocaleDateString(),
+              announcementId: announcement.id,
+              appUrl,
+              currentYear: new Date().getFullYear(),
+              subject: `New Announcement: ${title}`
+            }
+          })
+        );
+
+        await Promise.all(emailPromises);
+      } catch (emailError) {
+        console.error('Failed to send announcement emails:', emailError);
+        // Don't fail announcement creation if email fails
+      }
 
       res.status(201).json({
         success: true,

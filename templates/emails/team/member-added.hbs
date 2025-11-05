@@ -1,0 +1,41 @@
+{{!< layouts/main}}
+
+<h2>Welcome to {{teamName}}!</h2>
+
+<p>Hello {{memberName}},</p>
+
+<p>You have been added to the team <strong>{{teamName}}</strong> in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Team Details:</h3>
+  <p><strong>Team Name:</strong> {{teamName}}</p>
+  {{#if companyName}}
+  <p><strong>Company Name:</strong> {{companyName}}</p>
+  {{/if}}
+  <p><strong>Your Role:</strong> {{memberRole}}</p>
+</div>
+
+{{#if teamLeaderName}}
+<div style="background-color: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2196F3;">
+  <p><strong>Team Leader:</strong> {{teamLeaderName}}</p>
+  <p><strong>Email:</strong> {{teamLeaderEmail}}</p>
+</div>
+{{/if}}
+
+{{#if password}}
+<div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;">
+  <p><strong>⚠️ Important:</strong> Your account credentials:</p>
+  <p><strong>Email:</strong> {{memberEmail}}</p>
+  <p><strong>Temporary Password:</strong> <span style="font-size: 18px; font-weight: bold; color: #333;">{{password}}</span></p>
+  <p style="font-size: 12px; color: #666;">Please change this password after your first login.</p>
+</div>
+{{/if}}
+
+<p>You can now access the team dashboard, collaborate on projects, and participate in team activities.</p>
+
+<a href="{{appUrl}}" class="button">Access Dashboard</a>
+
+<p>If you have any questions, please contact your team leader or system administrator.</p>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

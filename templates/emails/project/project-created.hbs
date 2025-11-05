@@ -1,0 +1,35 @@
+{{!< layouts/main}}
+
+<h2>New Project Created</h2>
+
+<p>Hello,</p>
+
+<p>A new project has been created for your team in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Project Details:</h3>
+  <p><strong>Project Name:</strong> {{projectName}}</p>
+  {{#if description}}
+  <p><strong>Description:</strong> {{description}}</p>
+  {{/if}}
+  <p><strong>Category:</strong> {{category}}</p>
+  <p><strong>Status:</strong> {{status}}</p>
+  <p><strong>Team:</strong> {{teamName}}</p>
+  <p><strong>Created:</strong> {{createdDate}}</p>
+</div>
+
+{{#if mentorName}}
+<div style="background-color: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+  <p><strong>Assigned Mentor:</strong> {{mentorName}}</p>
+  {{#if mentorEmail}}
+  <p><strong>Email:</strong> {{mentorEmail}}</p>
+  {{/if}}
+</div>
+{{/if}}
+
+<p>You can now start working on this project, upload files, and track progress.</p>
+
+<a href="{{appUrl}}/projects/{{projectId}}" class="button">View Project</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

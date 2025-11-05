@@ -1,0 +1,38 @@
+{{!< layouts/main}}
+
+<h2>Material Request Declined</h2>
+
+<p>Hello {{requesterName}},</p>
+
+<p>We regret to inform you that your material request has been declined.</p>
+
+<div style="background-color: #ffebee; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #f44336;">
+  <h3>Request Details:</h3>
+  <p><strong>Item Name:</strong> {{itemName}}</p>
+  {{#if description}}
+  <p><strong>Description:</strong> {{description}}</p>
+  {{/if}}
+  <p><strong>Team:</strong> {{teamName}}</p>
+  <p><strong>Requested Date:</strong> {{requestedDate}}</p>
+  <p><strong>Reviewed Date:</strong> {{reviewedDate}}</p>
+  <p><strong>Reviewed By:</strong> {{reviewerName}}</p>
+  <p><strong>Status:</strong> <span style="color: #f44336; font-weight: bold;">Declined ✗</span></p>
+</div>
+
+{{#if notes}}
+<div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;">
+  <p><strong>Reason:</strong></p>
+  <p>{{notes}}</p>
+</div>
+{{else}}
+<div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;">
+  <p>Please contact the management team if you have any questions or would like to discuss this decision.</p>
+</div>
+{{/if}}
+
+<p>If you need to request different materials or have any concerns, please contact your team leader or system administrator.</p>
+
+<a href="{{appUrl}}/requests/{{requestId}}" class="button">View Request</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

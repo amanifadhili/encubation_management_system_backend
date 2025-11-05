@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { PasswordUtils } from '../utils/password';
+import emailService from '../services/emailService';
 
 const prisma = new PrismaClient();
 
@@ -151,6 +152,29 @@ export class UserController {
         }
       });
 
+      // Send welcome email
+      try {
+        await emailService.sendEmail({
+          to: newUser.email,
+          subject: 'Welcome to Incubation Management System',
+          template: 'user/user-created',
+          emailType: 'user_created',
+          userId: newUser.id,
+          templateData: {
+            userName: newUser.name,
+            userEmail: newUser.email,
+            role: newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1),
+            password: password, // Send password only in email for new users
+            appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+            currentYear: new Date().getFullYear(),
+            subject: 'Welcome to Incubation Management System'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send welcome email:', emailError);
+        // Don't fail user creation if email fails
+      }
+
       res.status(201).json({
         success: true,
         message: 'User created successfully',
@@ -219,6 +243,36 @@ export class UserController {
           updated_at: true
         }
       });
+
+      // Send update notification email
+      try {
+        const updateDataForEmail: any = {};
+        if (name && name !== existingUser.name) updateDataForEmail.updatedName = name;
+        if (email && email.toLowerCase() !== existingUser.email) updateDataForEmail.updatedEmail = email.toLowerCase();
+        if (role && role !== existingUser.role) updateDataForEmail.updatedRole = role.charAt(0).toUpperCase() + role.slice(1);
+        if (password) updateDataForEmail.passwordChanged = true;
+
+                  // Only send email if something actually changed
+          if (Object.keys(updateDataForEmail).length > 0) {
+            await emailService.sendEmail({
+              to: updatedUser.email,
+              subject: 'Account Information Updated',
+              template: 'user/user-updated',
+              emailType: 'user_updated',
+              userId: updatedUser.id,
+              templateData: {
+                userName: updatedUser.name,
+                ...updateDataForEmail,
+                appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+                currentYear: new Date().getFullYear(),
+                subject: 'Account Information Updated'
+              }
+            });
+          }
+      } catch (emailError) {
+        console.error('Failed to send update email:', emailError);
+        // Don't fail user update if email fails
+      }
 
       res.json({
         success: true,

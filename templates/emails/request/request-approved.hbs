@@ -1,0 +1,34 @@
+{{!< layouts/main}}
+
+<h2>Material Request Approved</h2>
+
+<p>Hello {{requesterName}},</p>
+
+<p>Your material request has been approved!</p>
+
+<div style="background-color: #e8f5e9; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #4CAF50;">
+  <h3>Request Details:</h3>
+  <p><strong>Item Name:</strong> {{itemName}}</p>
+  {{#if description}}
+  <p><strong>Description:</strong> {{description}}</p>
+  {{/if}}
+  <p><strong>Team:</strong> {{teamName}}</p>
+  <p><strong>Requested Date:</strong> {{requestedDate}}</p>
+  <p><strong>Reviewed Date:</strong> {{reviewedDate}}</p>
+  <p><strong>Reviewed By:</strong> {{reviewerName}}</p>
+  <p><strong>Status:</strong> <span style="color: #4CAF50; font-weight: bold;">Approved ✓</span></p>
+</div>
+
+{{#if notes}}
+<div style="background-color: #e3f2fd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #2196F3;">
+  <p><strong>Reviewer Notes:</strong></p>
+  <p>{{notes}}</p>
+</div>
+{{/if}}
+
+<p>The requested materials will be assigned to your team shortly. You will receive another notification once the assignment is complete.</p>
+
+<a href="{{appUrl}}/requests/{{requestId}}" class="button">View Request</a>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

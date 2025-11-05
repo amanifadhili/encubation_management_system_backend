@@ -64,6 +64,12 @@ enum TeamMemberRole {
   member
 }
 
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 // User model
 model User {
   id            String   @id @default(cuid())
@@ -83,6 +89,7 @@ model User {
   messages_sent        Message[]
   notifications_sent   Notification[]
   announcements_created Announcement[]
+  email_preferences    EmailPreferences?
 
   @@map("users")
 }
@@ -302,4 +309,40 @@ model Announcement {
   author User @relation(fields: [author_id], references: [id], onDelete: Cascade)
 
   @@map("announcements")
+}
+
+// Email Log model
+model EmailLog {
+  id            String      @id @default(cuid())
+  recipient     String
+  subject       String
+  template_name String
+  status        EmailStatus
+  error_message String?
+  sent_at       DateTime?
+  created_at    DateTime    @default(now())
+
+  @@map("email_logs")
+}
+
+// Email Preferences model
+model EmailPreferences {
+  id                String   @id @default(cuid())
+  user_id           String   @unique
+  user_created      Boolean  @default(true)
+  user_updated      Boolean  @default(true)
+  team_updates      Boolean  @default(true)
+  project_updates   Boolean  @default(true)
+  notifications     Boolean  @default(false)
+  messages          Boolean  @default(false)
+  announcements     Boolean  @default(true)
+  material_requests Boolean  @default(true)
+  inventory_updates Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("email_preferences")
 }

@@ -1,0 +1,31 @@
+{{!< layouts/main}}
+
+<h2>Welcome to Incubation Management System!</h2>
+
+<p>Hello {{userName}},</p>
+
+<p>Your account has been successfully created in the Incubation Management System.</p>
+
+<div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+  <h3>Account Details:</h3>
+  <p><strong>Name:</strong> {{userName}}</p>
+  <p><strong>Email:</strong> {{userEmail}}</p>
+  <p><strong>Role:</strong> {{role}}</p>
+</div>
+
+{{#if password}}
+<div style="background-color: #fff3cd; padding: 15px; border-radius: 4px; margin: 20px 0; border-left: 4px solid #ffc107;">
+  <p><strong>⚠️ Important:</strong> Please save your temporary password:</p>
+  <p style="font-size: 18px; font-weight: bold; text-align: center; color: #333;">{{password}}</p>
+  <p style="font-size: 12px; color: #666;">Please change this password after your first login.</p>
+</div>
+{{/if}}
+
+<p>You can now log in to the system using your email address and password.</p>
+
+<a href="{{appUrl}}" class="button">Access System</a>
+
+<p>If you have any questions or need assistance, please don't hesitate to contact your system administrator.</p>
+
+<p>Best regards,<br>
+Incubation Management System Team</p>

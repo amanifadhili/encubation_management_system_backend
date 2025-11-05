@@ -19,6 +19,8 @@ import announcementRoutes from './routes/announcements';
 import reportsRoutes from './routes/reports';
 import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
+import emailPreferencesRoutes from './routes/emailPreferences';
+import emailRoutes from './routes/email';
 
 // Load environment variables
 dotenv.config();
@@ -56,6 +58,8 @@ app.use('/api/announcements', announcementRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/email-preferences', emailPreferencesRoutes);
+app.use('/api/email', emailRoutes);
 app.use('/api', messageRoutes);
 
 // Basic route
