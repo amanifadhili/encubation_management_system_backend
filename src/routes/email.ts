@@ -40,4 +40,16 @@ router.post(
   EmailController.clearCache
 );
 
+/**
+ * @route POST /api/email/test
+ * @desc Test email sending with different email types
+ * @access Private (Manager, Director)
+ */
+router.post(
+  '/test',
+  AuthMiddleware.authenticate,
+  AuthMiddleware.authorize('manager', 'director'),
+  EmailController.testEmail
+);
+
 export default router;
