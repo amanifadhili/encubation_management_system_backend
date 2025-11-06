@@ -46,8 +46,8 @@ export class TeamController {
       const where: Prisma.TeamWhereInput = {};
 
       // Role-based filtering
-      if (req.user?.role === 'manager') {
-        // Managers can see all teams
+      if (req.user?.role === 'manager' || req.user?.role === 'director') {
+        // Managers and Directors can see all teams
       } else if (req.user?.role === 'mentor') {
         // Mentors can only see teams assigned to them
         where.mentor_assignments = {
@@ -240,7 +240,7 @@ export class TeamController {
   }
 
   /**
-   * Create new team (Manager only)
+   * Create new team (Manager/Director only)
    */
   static async createTeam(req: Request, res: Response): Promise<void> {
     try {
@@ -481,7 +481,7 @@ export class TeamController {
   }
 
   /**
-   * Delete team (Manager only)
+   * Delete team (Manager/Director only)
    */
   static async deleteTeam(req: Request, res: Response): Promise<void> {
     try {

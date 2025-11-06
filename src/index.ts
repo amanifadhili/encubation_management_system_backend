@@ -40,7 +40,7 @@ const PORT = process.env.PORT || 3001;
 const socketHandler = new SocketHandler(server);
 setSocketHandler(socketHandler);
 
-// Security Middleware
+// Security Middleware (CORS will handle OPTIONS preflight automatically)
 SecurityMiddleware.applySecurity(app);
 
 // Body parsing middleware

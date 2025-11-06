@@ -24,7 +24,8 @@ export async function getTeamMemberEmails(teamId: string): Promise<string[]> {
 }
 
 /**
- * Get email addresses of all managers
+ * Get email addresses of all managers and directors
+ * Note: Includes both manager and director roles
  */
 export async function getManagerEmails(): Promise<string[]> {
   try {

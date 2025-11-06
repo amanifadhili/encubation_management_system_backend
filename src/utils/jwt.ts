@@ -4,6 +4,16 @@ import { User } from '@prisma/client';
 const JWT_SECRET = process.env.JWT_SECRET || 'your_super_secret_jwt_key_here_change_in_production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
+// Log JWT_SECRET status on module load (without exposing the secret)
+if (!process.env.JWT_SECRET) {
+  console.error('⚠️ WARNING: JWT_SECRET is not set in environment variables! Using default value.');
+} else {
+  console.log('✅ JWT_SECRET is set:', {
+    length: process.env.JWT_SECRET.length,
+    preview: process.env.JWT_SECRET.substring(0, 10) + '...'
+  });
+}
+
 export interface JWTPayload {
   userId: string;
   email: string;
@@ -35,14 +45,44 @@ export class JWTUtils {
    */
   static verifyToken(token: string): JWTPayload {
     try {
+      console.log('🔑 JWT Verification:', {
+        hasToken: !!token,
+        tokenLength: token.length,
+        jwtSecretLength: JWT_SECRET?.length || 0,
+        jwtSecretPreview: JWT_SECRET ? JWT_SECRET.substring(0, 10) + '...' : 'NOT SET'
+      });
+
       const decoded = jwt.verify(token, JWT_SECRET, {
         issuer: 'incubation-management-system',
         audience: 'incubation-users',
       }) as JWTPayload;
 
+      console.log('✅ JWT Token verified successfully:', {
+        userId: decoded.userId,
+        email: decoded.email,
+        role: decoded.role
+      });
+
       return decoded;
-    } catch (error) {
-      throw new Error('Invalid or expired token');
+    } catch (error: any) {
+      console.error('❌ JWT Verification failed:', {
+        error: error.message,
+        name: error.name,
+        expiredAt: error.expiredAt,
+        jwtSecretSet: !!JWT_SECRET,
+        jwtSecretLength: JWT_SECRET?.length || 0
+      });
+      
+      // Provide more specific error messages
+      if (error.name === 'TokenExpiredError') {
+        throw new Error('Token has expired. Please log in again.');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new Error('Invalid token format or signature');
+      } else if (error.name === 'NotBeforeError') {
+        throw new Error('Token not yet valid');
+      } else {
+        throw new Error(`Invalid or expired token: ${error.message}`);
+      }
     }
   }
 

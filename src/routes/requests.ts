@@ -28,14 +28,14 @@ router.get('/:id', AuthMiddleware.authenticate, RequestController.getRequestById
 /**
  * @route PUT /api/requests/:id/status
  * @desc Update request status (approve/decline)
- * @access Private (Manager only)
+ * @access Private (Manager, Director)
  */
 router.put('/:id/status', AuthMiddleware.authenticate, requireManager, RequestController.updateRequestStatus);
 
 /**
  * @route DELETE /api/requests/:id
  * @desc Delete material request
- * @access Private (Manager, or team leader for own pending requests)
+ * @access Private (Manager, Director, or team leader for own pending requests)
  */
 router.delete('/:id', AuthMiddleware.authenticate, RequestController.deleteRequest);
 

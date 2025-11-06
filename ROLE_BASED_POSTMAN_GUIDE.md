@@ -114,11 +114,25 @@ The collection uses **automatic token management**:
 - 📢 Create Announcements
 - 💬 View All Conversations
 
+**Available Endpoints (Director has all Manager privileges):**
+- ➕ Create New Team
+- 👥 Manage Teams (CRUD)
+- 🎓 Create/Manage Mentors
+- ➕ Create/Manage Inventory
+- 📋 Approve/Decline Requests
+- 📢 Create Notifications
+- 📊 Generate Reports
+- 💬 Team Communications
+- 👥 View All Teams
+- 📊 Dashboard Analytics
+
 **Example Usage:**
 1. Login as Director
-2. Go to `🎯 DIRECTOR - FULL SYSTEM ACCESS`
-3. Click `📊 Dashboard Analytics` → See full system overview
-4. Click `👥 View All Teams` → Manage all teams
+2. Go to `🎯 DIRECTOR - FULL SYSTEM ACCESS` or `👔 MANAGER - OPERATIONAL MANAGEMENT`
+3. Click `➕ Create New Team` → Add new incubation team (now available to Director)
+4. Click `📋 Approve Requests` → Review material requests (now available to Director)
+5. Click `📊 Dashboard Analytics` → See full system overview
+6. Click `👥 Manage Teams` → Full CRUD operations on teams
 
 ### Manager Role (👔 MANAGER - OPERATIONAL MANAGEMENT)
 

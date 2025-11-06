@@ -228,7 +228,19 @@ export class SecurityMiddleware {
     const corsOrigin = getCorsOrigin();
     const corsConfig = {
       ...this.config.cors,
-      origin: corsOrigin
+      origin: corsOrigin,
+      // Explicitly handle preflight requests
+      preflightContinue: false,
+      // Ensure Authorization header is allowed
+      allowedHeaders: [
+        'Origin',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'Cache-Control',
+        'X-Access-Token'
+      ]
     };
     
     // Debug logging
@@ -236,10 +248,35 @@ export class SecurityMiddleware {
       origin: corsConfig.origin,
       methods: corsConfig.methods,
       credentials: corsConfig.credentials,
+      allowedHeaders: corsConfig.allowedHeaders,
       'CORS_ORIGIN from env': process.env.CORS_ORIGIN
     });
     
     app.use(cors(corsConfig));
+    
+    // Additional middleware to log CORS requests
+    app.use((req, res, next) => {
+      if (req.method === 'OPTIONS') {
+        console.log('🔍 CORS Preflight:', {
+          origin: req.headers.origin,
+          method: req.headers['access-control-request-method'],
+          headers: req.headers['access-control-request-headers']
+        });
+      }
+      
+      // Log Authorization header for write requests
+      if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
+        console.log('📝 Write Request:', {
+          method: req.method,
+          url: req.url,
+          hasAuthHeader: !!req.headers.authorization,
+          authHeaderPreview: req.headers.authorization ? req.headers.authorization.substring(0, 30) + '...' : 'none',
+          origin: req.headers.origin
+        });
+      }
+      
+      next();
+    });
   }
 
   /**
