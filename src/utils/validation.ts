@@ -1031,11 +1031,15 @@ export const userSchemas = {
       }),
 
     password: Joi.string()
-      .required()
-      .custom(validatePassword)
+      .optional()
+      .custom((value, helpers) => {
+        // If password is provided, validate it
+        if (value && value !== '') {
+          return validatePassword(value, helpers);
+        }
+        return value;
+      })
       .messages({
-        'string.empty': 'Password is required',
-        'any.required': 'Password is required',
         'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
       }),
 

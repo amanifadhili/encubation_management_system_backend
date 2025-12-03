@@ -131,8 +131,11 @@ export class UserController {
         });
       }
 
+      // Generate password if not provided (default password based on role)
+      const userPassword = password || PasswordUtils.generateDefaultPassword(role);
+
       // Hash password
-      const hashedPassword = await PasswordUtils.hash(password);
+      const hashedPassword = await PasswordUtils.hash(userPassword);
 
       // Create user
       const newUser = await prisma.user.create({
@@ -164,7 +167,7 @@ export class UserController {
             userName: newUser.name,
             userEmail: newUser.email,
             role: newUser.role.charAt(0).toUpperCase() + newUser.role.slice(1),
-            password: password, // Send password only in email for new users
+            password: userPassword, // Send password (generated or provided) in email for new users
             appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
             currentYear: new Date().getFullYear(),
             subject: 'Welcome to Incubation Management System'
