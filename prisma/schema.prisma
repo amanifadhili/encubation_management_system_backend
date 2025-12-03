@@ -1,7 +1,8 @@
 // Prisma schema file for Incubation Management System
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native"]
 }
 
 datasource db {
