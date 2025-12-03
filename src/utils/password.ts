@@ -57,4 +57,42 @@ export class PasswordUtils {
       errors,
     };
   }
+
+  /**
+   * Generate a default password based on user role
+   * Format: [Role]@[Year][SpecialChar][RandomNum]
+   * Example: Manager@2024!1234
+   * This format ensures:
+   * - Uppercase: First letter of role name
+   * - Lowercase: Rest of role name
+   * - Number: Year + random 4-digit number
+   * - Special character: @ and another special char
+   * - Length: Always > 8 characters
+   */
+  static generateDefaultPassword(role: string): string {
+    const roleMap: Record<string, string> = {
+      director: 'Director',
+      manager: 'Manager',
+      mentor: 'Mentor',
+      incubator: 'Incubator'
+    };
+
+    const currentYear = new Date().getFullYear();
+    const roleName = roleMap[role.toLowerCase()] || 'User';
+    const specialChars = '!@#$%^&*';
+    const specialChar = specialChars[Math.floor(Math.random() * specialChars.length)];
+    const randomNum = Math.floor(1000 + Math.random() * 9000); // 4-digit random number
+
+    // Format: Role@YearSpecialCharRandomNum
+    // Example: Director@2024!1234
+    // This format guarantees:
+    // - Uppercase letter (first char of role)
+    // - Lowercase letters (rest of role name)
+    // - Numbers (year + randomNum)
+    // - Special characters (@ and another special char)
+    // - Length always > 8
+    const password = `${roleName}@${currentYear}${specialChar}${randomNum}`;
+
+    return password;
+  }
 }
