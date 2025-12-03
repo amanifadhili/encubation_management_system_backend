@@ -9,6 +9,9 @@ interface CreateProjectRequest {
   description?: string;
   category: string;
   status?: string;
+  startup_company_name?: string;
+  status_at_enrollment?: string;
+  challenge_description?: string;
 }
 
 interface UpdateProjectRequest {
@@ -17,6 +20,9 @@ interface UpdateProjectRequest {
   category?: string;
   status?: string;
   progress?: number;
+  startup_company_name?: string;
+  status_at_enrollment?: string;
+  challenge_description?: string;
 }
 
 interface ProjectResponse {
@@ -226,7 +232,7 @@ export class ProjectController {
    */
   static async createProject(req: Request, res: Response): Promise<void> {
     try {
-      const { name, description, category, status }: CreateProjectRequest = req.body;
+      const { name, description, category, status, startup_company_name, status_at_enrollment, challenge_description }: CreateProjectRequest = req.body;
 
       // Validate required fields
       if (!name || !category) {
@@ -263,7 +269,10 @@ export class ProjectController {
           category: category as any,
           status: (status as any) || 'pending',
           progress: 0,
-          team_id: teamMember.team_id
+          team_id: teamMember.team_id,
+          startup_company_name: startup_company_name || null,
+          status_at_enrollment: status_at_enrollment ? (status_at_enrollment as any) : null,
+          challenge_description: challenge_description || null
         },
         include: {
           team: {
@@ -352,7 +361,7 @@ export class ProjectController {
   static async updateProject(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, description, category, status, progress }: UpdateProjectRequest = req.body;
+      const { name, description, category, status, progress, startup_company_name, status_at_enrollment, challenge_description }: UpdateProjectRequest = req.body;
 
       // Check if project exists
       const existingProject = await prisma.project.findUnique({
@@ -407,7 +416,10 @@ export class ProjectController {
           ...(description !== undefined && { description }),
           ...(category && { category: category as any }),
           ...(status && { status: status as any }),
-          ...(progress !== undefined && { progress })
+          ...(progress !== undefined && { progress }),
+          ...(startup_company_name !== undefined && { startup_company_name: startup_company_name || null }),
+          ...(status_at_enrollment !== undefined && { status_at_enrollment: status_at_enrollment ? (status_at_enrollment as any) : null }),
+          ...(challenge_description !== undefined && { challenge_description: challenge_description || null })
         },
         include: {
           team: {

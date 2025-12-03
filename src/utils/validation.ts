@@ -9,7 +9,10 @@ const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d
 const userRoles = ['director', 'manager', 'mentor', 'incubator'];
 const teamStatuses = ['active', 'pending', 'inactive'];
 const projectStatuses = ['active', 'pending', 'completed', 'on_hold'];
-const projectCategories = ['Technology', 'Agriculture', 'Health', 'Education', 'Design'];
+const projectCategories = ['Technology', 'Agriculture', 'Health', 'Education', 'Design', 'SocialImpact', 'Sustainability', 'AgriTech', 'HealthTech', 'EdTech', 'RoboticsAI', 'FinTech', 'OpenToAny', 'Other'];
+const enrollmentStatuses = ['CurrentlyEnrolled', 'Graduated', 'OnLeave', 'Other'];
+const projectStatusAtEnrollment = ['Idea', 'Prototype', 'MVP', 'Beta', 'Launched'];
+const currentRoles = ['ProjectLead', 'Employee', 'FounderCoFounder', 'AttendsWorkshopsOnly', 'Other'];
 const inventoryStatuses = ['available', 'low_stock', 'out_of_stock'];
 const requestStatuses = ['pending', 'approved', 'declined'];
 const messageTypes = ['text', 'file'];
@@ -286,6 +289,32 @@ export const projectSchemas = {
         'number.base': 'Progress must be a number',
         'number.min': 'Progress cannot be less than 0',
         'number.max': 'Progress cannot exceed 100'
+      }),
+
+    // Enhanced project fields
+    startup_company_name: Joi.string()
+      .max(200)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Startup/Company name cannot exceed 200 characters'
+      }),
+
+    status_at_enrollment: Joi.string()
+      .valid(...projectStatusAtEnrollment)
+      .optional()
+      .messages({
+        'any.only': `Status at enrollment must be one of: ${projectStatusAtEnrollment.join(', ')}`
+      }),
+
+    challenge_description: Joi.string()
+      .max(2000)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Challenge description cannot exceed 2000 characters'
       })
   }),
 
@@ -332,6 +361,32 @@ export const projectSchemas = {
         'number.base': 'Progress must be a number',
         'number.min': 'Progress cannot be less than 0',
         'number.max': 'Progress cannot exceed 100'
+      }),
+
+    // Enhanced project fields
+    startup_company_name: Joi.string()
+      .max(200)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Startup/Company name cannot exceed 200 characters'
+      }),
+
+    status_at_enrollment: Joi.string()
+      .valid(...projectStatusAtEnrollment)
+      .optional()
+      .messages({
+        'any.only': `Status at enrollment must be one of: ${projectStatusAtEnrollment.join(', ')}`
+      }),
+
+    challenge_description: Joi.string()
+      .max(2000)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Challenge description cannot exceed 2000 characters'
       })
   }).min(1).messages({
     'object.min': 'At least one field must be provided for update'
