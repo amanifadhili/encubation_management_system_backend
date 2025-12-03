@@ -3,6 +3,7 @@ import { Team, TeamMember, User, Prisma } from '@prisma/client';
 import prisma from '../config/database';
 import emailService from '../services/emailService';
 import { getTeamNotificationRecipients, getTeamLeaderEmail, getTeamMentorEmails } from '../utils/emailHelpers';
+import { PasswordUtils } from '../utils/password';
 
 interface CreateTeamRequest {
   team_name: string;
@@ -657,14 +658,15 @@ export class TeamController {
         return;
       }
 
-      // Create user (temporary password, should be changed)
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const hashedPassword = await import('../utils/password').then(m => m.PasswordUtils.hash(tempPassword));
+      // Generate default password for incubator
+      const incubatorPassword = PasswordUtils.generateDefaultPassword('incubator');
+      const hashedPassword = await PasswordUtils.hash(incubatorPassword);
 
+      // Create user account for incubator
       const newUser = await prisma.user.create({
         data: {
           name,
-          email,
+          email: email.toLowerCase(),
           password_hash: hashedPassword,
           role: 'incubator'
         }
@@ -707,7 +709,7 @@ export class TeamController {
             companyName: team.company_name || '',
             teamLeaderName: teamLeader ? (await prisma.user.findUnique({ where: { email: teamLeader }, select: { name: true } }))?.name : '',
             teamLeaderEmail: teamLeader || '',
-            password: tempPassword,
+            password: incubatorPassword,
             appUrl,
             currentYear: new Date().getFullYear(),
             subject: `Welcome to ${team.team_name}!`
@@ -739,8 +741,8 @@ export class TeamController {
 
       res.status(201).json({
         success: true,
-        message: 'Team member added successfully',
-        data: { teamMember, tempPassword }
+        message: 'Team member added successfully. Password sent to email.',
+        data: { teamMember }
       });
 
     } catch (error) {

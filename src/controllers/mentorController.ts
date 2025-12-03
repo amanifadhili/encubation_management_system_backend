@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { Mentor, User, Team, Prisma } from '@prisma/client';
 import prisma from '../config/database';
+import { PasswordUtils } from '../utils/password';
+import emailService from '../services/emailService';
 
 interface CreateMentorRequest {
   name: string;
@@ -225,14 +227,15 @@ export class MentorController {
         return;
       }
 
-      // Create user account for mentor
-      const tempPassword = Math.random().toString(36).slice(-8);
-      const hashedPassword = await import('../utils/password').then(m => m.PasswordUtils.hash(tempPassword));
+      // Generate default password for mentor
+      const mentorPassword = PasswordUtils.generateDefaultPassword('mentor');
+      const hashedPassword = await PasswordUtils.hash(mentorPassword);
 
+      // Create user account for mentor
       const newUser = await prisma.user.create({
         data: {
           name,
-          email,
+          email: email.toLowerCase(),
           password_hash: hashedPassword,
           role: 'mentor'
         }
@@ -257,10 +260,33 @@ export class MentorController {
         }
       });
 
+      // Send welcome email with password
+      try {
+        await emailService.sendEmail({
+          to: newUser.email,
+          subject: 'Welcome to Incubation Management System - Mentor Account',
+          template: 'user/user-created',
+          emailType: 'user_created',
+          userId: newUser.id,
+          templateData: {
+            userName: newUser.name,
+            userEmail: newUser.email,
+            role: 'Mentor',
+            password: mentorPassword,
+            appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+            currentYear: new Date().getFullYear(),
+            subject: 'Welcome to Incubation Management System - Mentor Account'
+          }
+        });
+      } catch (emailError) {
+        console.error('Failed to send welcome email to mentor:', emailError);
+        // Don't fail mentor creation if email fails
+      }
+
       res.status(201).json({
         success: true,
-        message: 'Mentor created successfully',
-        data: { mentor, tempPassword }
+        message: 'Mentor created successfully. Password sent to email.',
+        data: { mentor }
       } as MentorResponse);
 
     } catch (error) {
