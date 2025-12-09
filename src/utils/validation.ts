@@ -1116,6 +1116,18 @@ export const userSchemas = {
       .messages({
         'any.only': `Role must be one of: ${userRoles.join(', ')}`,
         'any.required': 'Role is required'
+      }),
+
+    teamId: Joi.string()
+      .custom(validateObjectId)
+      .when('role', {
+        is: 'incubator',
+        then: Joi.required(),
+        otherwise: Joi.optional()
+      })
+      .messages({
+        'any.required': 'Team ID is required for incubator role',
+        'string.pattern.base': 'Invalid team ID format'
       })
   }),
 
@@ -1142,6 +1154,18 @@ export const userSchemas = {
       .optional()
       .messages({
         'any.only': `Role must be one of: ${userRoles.join(', ')}`
+      }),
+
+    teamId: Joi.string()
+      .custom(validateObjectId)
+      .when('role', {
+        is: 'incubator',
+        then: Joi.required(),
+        otherwise: Joi.optional()
+      })
+      .messages({
+        'any.required': 'Team ID is required for incubator role',
+        'string.pattern.base': 'Invalid team ID format'
       }),
 
     password: Joi.string()

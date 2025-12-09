@@ -119,7 +119,7 @@ export class UserController {
   // Create new user (Director only)
   static async createUser(req: Request, res: Response) {
     try {
-      const { name, email, password, role } = req.body;
+      const { name, email, password, role, teamId } = req.body;
 
       // Check if user already exists
       const existingUser = await prisma.user.findUnique({
@@ -131,6 +131,26 @@ export class UserController {
           success: false,
           message: 'User with this email already exists'
         });
+      }
+
+      // Validate team requirement for incubators
+      if (role === 'incubator') {
+        if (!teamId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Team ID is required for incubator users',
+            code: 'TEAM_REQUIRED'
+          });
+        }
+
+        const teamExists = await prisma.team.findUnique({ where: { id: teamId } });
+        if (!teamExists) {
+          return res.status(404).json({
+            success: false,
+            message: 'Team not found',
+            code: 'TEAM_NOT_FOUND'
+          });
+        }
       }
 
       // Generate password if not provided (default password based on role)
@@ -156,6 +176,17 @@ export class UserController {
           updated_at: true
         }
       });
+
+      // If incubator, ensure team membership
+      if (role === 'incubator' && teamId) {
+        await prisma.teamMember.create({
+          data: {
+            team_id: teamId,
+            user_id: newUser.id,
+            role: 'team_leader'
+          }
+        });
+      }
 
       // Send welcome email
       try {
@@ -198,7 +229,7 @@ export class UserController {
   static async updateUser(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { name, email, password, role } = req.body;
+      const { name, email, password, role, teamId } = req.body;
 
       // Check if user exists
       const existingUser = await prisma.user.findUnique({
@@ -226,6 +257,38 @@ export class UserController {
         }
       }
 
+      // Determine target role after update
+      const targetRole = role || existingUser.role;
+
+      // Validate team requirement for incubators
+      let targetTeamId = teamId;
+      if (targetRole === 'incubator') {
+        // If no team provided, try to use existing membership
+        if (!targetTeamId) {
+          const membership = await prisma.teamMember.findFirst({
+            where: { user_id: id }
+          });
+          targetTeamId = membership?.team_id;
+        }
+
+        if (!targetTeamId) {
+          return res.status(400).json({
+            success: false,
+            message: 'Team ID is required for incubator users',
+            code: 'TEAM_REQUIRED'
+          });
+        }
+
+        const teamExists = await prisma.team.findUnique({ where: { id: targetTeamId } });
+        if (!teamExists) {
+          return res.status(404).json({
+            success: false,
+            message: 'Team not found',
+            code: 'TEAM_NOT_FOUND'
+          });
+        }
+      }
+
       // Prepare update data
       const updateData: any = {};
       if (name) updateData.name = name;
@@ -248,6 +311,24 @@ export class UserController {
           updated_at: true
         }
       });
+
+      // Manage team membership for incubators
+      if (targetRole === 'incubator') {
+        // Remove any existing memberships then assign to target team as leader
+        await prisma.teamMember.deleteMany({
+          where: { user_id: id }
+        });
+        await prisma.teamMember.create({
+          data: {
+            team_id: targetTeamId!,
+            user_id: id,
+            role: 'team_leader'
+          }
+        });
+      } else if (existingUser.role === 'incubator' && targetRole !== 'incubator') {
+        // If changing away from incubator, remove team membership
+        await prisma.teamMember.deleteMany({ where: { user_id: id } });
+      }
 
       // Send update notification email
       try {
