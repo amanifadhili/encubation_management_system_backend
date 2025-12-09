@@ -257,12 +257,15 @@ export const projectSchemas = {
       }),
 
     description: Joi.string()
-      .max(1000)
+      .min(50)
+      .max(5000)
       .trim()
-      .optional()
-      .allow('')
+      .required()
       .messages({
-        'string.max': 'Description cannot exceed 1000 characters'
+        'string.empty': 'Project description is required',
+        'string.min': 'Description should be at least 50 characters (recommended: 200-500 words)',
+        'string.max': 'Description cannot exceed 5000 characters',
+        'any.required': 'Project description is required'
       }),
 
     category: Joi.string()
@@ -303,18 +306,23 @@ export const projectSchemas = {
 
     status_at_enrollment: Joi.string()
       .valid(...projectStatusAtEnrollment)
-      .optional()
+      .required()
       .messages({
-        'any.only': `Status at enrollment must be one of: ${projectStatusAtEnrollment.join(', ')}`
+        'any.only': `Status at enrollment must be one of: ${projectStatusAtEnrollment.join(', ')}`,
+        'any.required': 'Status at enrollment is required',
+        'string.empty': 'Status at enrollment is required'
       }),
 
     challenge_description: Joi.string()
-      .max(2000)
+      .min(30)
+      .max(3000)
       .trim()
-      .optional()
-      .allow('')
+      .required()
       .messages({
-        'string.max': 'Challenge description cannot exceed 2000 characters'
+        'string.empty': 'Challenge/problem description is required',
+        'string.min': 'Challenge description should be at least 30 characters (recommended: 100-300 words)',
+        'string.max': 'Challenge description cannot exceed 3000 characters',
+        'any.required': 'Challenge/problem description is required'
       })
   }),
 
@@ -330,12 +338,14 @@ export const projectSchemas = {
       }),
 
     description: Joi.string()
-      .max(1000)
+      .min(50)
+      .max(5000)
       .trim()
       .optional()
       .allow('')
       .messages({
-        'string.max': 'Description cannot exceed 1000 characters'
+        'string.min': 'Description should be at least 50 characters (recommended: 200-500 words)',
+        'string.max': 'Description cannot exceed 5000 characters'
       }),
 
     category: Joi.string()
@@ -381,12 +391,14 @@ export const projectSchemas = {
       }),
 
     challenge_description: Joi.string()
-      .max(2000)
+      .min(30)
+      .max(3000)
       .trim()
       .optional()
       .allow('')
       .messages({
-        'string.max': 'Challenge description cannot exceed 2000 characters'
+        'string.min': 'Challenge description should be at least 30 characters (recommended: 100-300 words)',
+        'string.max': 'Challenge description cannot exceed 3000 characters'
       })
   }).min(1).messages({
     'object.min': 'At least one field must be provided for update'

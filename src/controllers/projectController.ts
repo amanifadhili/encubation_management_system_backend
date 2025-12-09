@@ -6,12 +6,12 @@ import { getTeamNotificationRecipients, getTeamMentorEmails } from '../utils/ema
 
 interface CreateProjectRequest {
   name: string;
-  description?: string;
+  description: string; // Required
   category: string;
   status?: string;
-  startup_company_name?: string;
-  status_at_enrollment?: string;
-  challenge_description?: string;
+  startup_company_name?: string; // Optional
+  status_at_enrollment: string; // Required
+  challenge_description: string; // Required
 }
 
 interface UpdateProjectRequest {
@@ -97,11 +97,13 @@ export class ProjectController {
         where.team_id = team_id as string;
       }
 
-      // Search filter
+      // Search filter - include new fields in search
       if (search) {
         where.OR = [
           { name: { contains: search as string } },
-          { description: { contains: search as string } }
+          { description: { contains: search as string } },
+          { startup_company_name: { contains: search as string } },
+          { challenge_description: { contains: search as string } }
         ];
       }
 
@@ -235,11 +237,18 @@ export class ProjectController {
       const { name, description, category, status, startup_company_name, status_at_enrollment, challenge_description }: CreateProjectRequest = req.body;
 
       // Validate required fields
-      if (!name || !category) {
+      if (!name || !category || !status_at_enrollment || !description || !challenge_description) {
         res.status(400).json({
           success: false,
-          message: 'Project name and category are required',
-          code: 'MISSING_REQUIRED_FIELDS'
+          message: 'Project name, category, status at enrollment, description, and challenge description are required',
+          code: 'MISSING_REQUIRED_FIELDS',
+          errors: [
+            !name && { field: 'name', message: 'Project name is required' },
+            !category && { field: 'category', message: 'Category is required' },
+            !status_at_enrollment && { field: 'status_at_enrollment', message: 'Status at enrollment is required' },
+            !description && { field: 'description', message: 'Project description is required' },
+            !challenge_description && { field: 'challenge_description', message: 'Challenge/problem description is required' }
+          ].filter(Boolean)
         } as ProjectResponse);
         return;
       }
