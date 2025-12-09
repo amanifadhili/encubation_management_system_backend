@@ -6,7 +6,6 @@ export interface PhaseCompletion {
   phase1: boolean;
   phase2: boolean;
   phase3: boolean;
-  phase4: boolean;
   phase5: boolean;
 }
 
@@ -85,35 +84,15 @@ export class ProfileCompletionCalculator {
   }
 
   /**
-   * Calculate Phase 4 completion (Project Information)
-   * This requires checking if user has projects with required fields
+   * Phase 4 (Project Information) has been moved to Projects page.
+   * Projects are now managed separately and are not part of profile completion.
+   * This method is kept for backward compatibility but always returns true.
+   * @deprecated Phase 4 is no longer part of profile completion
    */
   static async calculatePhase4(userId: string): Promise<boolean> {
-    // Check if user has any projects
-    const projects = await prisma.project.findMany({
-      where: {
-        team: {
-          team_members: {
-            some: {
-              user_id: userId
-            }
-          }
-        }
-      },
-      take: 1
-    });
-
-    if (projects.length === 0) {
-      return false; // No projects, Phase 4 not applicable yet
-    }
-
-    // Check if at least one project has required fields
-    const projectWithDetails = projects.find(p => 
-      p.status_at_enrollment && 
-      p.challenge_description
-    );
-
-    return !!projectWithDetails;
+    // Phase 4 is no longer part of profile completion
+    // Projects are managed separately in the Projects page
+    return true;
   }
 
   /**
@@ -126,55 +105,36 @@ export class ProfileCompletionCalculator {
 
   /**
    * Calculate overall profile completion
+   * Phase 4 (Project Information) has been moved to Projects page and is no longer part of profile completion.
+   * Profile now consists of 4 phases: Phase 1-3 (required, 75%) and Phase 5 (optional, 25%).
    */
   static async calculateCompletion(userId: string, user: any): Promise<ProfileCompletionData> {
     const phase1 = this.calculatePhase1(user);
     const phase2 = this.calculatePhase2(user);
     const phase3 = this.calculatePhase3(user);
-    const phase4 = await this.calculatePhase4(userId);
     const phase5 = this.calculatePhase5(user);
 
     const phases: PhaseCompletion = {
       phase1,
       phase2,
       phase3,
-      phase4,
       phase5
     };
 
     // Calculate percentage
-    // Phase 1-3 are required (60%), Phase 4 is required if user has projects (20%), Phase 5 is optional (20%)
+    // Phase 1-3 are required (75% total), Phase 5 is optional (25%)
+    // Total: 4 phases, but Phase 5 is optional
     let completedPhases = 0;
-    let totalPhases = 3; // Phase 1-3 are always counted
+    const totalPhases = 4; // Phase 1, 2, 3, 5
 
     if (phase1) completedPhases++;
     if (phase2) completedPhases++;
     if (phase3) completedPhases++;
+    if (phase5) completedPhases++;
 
-    // Phase 4: Check if user has projects, if yes, it's required
-    const hasProjects = await prisma.project.findFirst({
-      where: {
-        team: {
-          team_members: {
-            some: {
-              user_id: userId
-            }
-          }
-        }
-      }
-    });
-
-    if (hasProjects) {
-      totalPhases++; // Phase 4 is required
-      if (phase4) completedPhases++;
-    }
-
-    // Phase 5 is optional, but counts if completed
-    if (phase5) {
-      completedPhases++;
-    }
-
-    // Calculate percentage
+    // Calculate percentage: (completed / total) * 100
+    // Since Phase 5 is optional, max is 100% if all 4 are complete
+    // But we can also calculate as: Phase 1-3 (75%) + Phase 5 (25%)
     const percentage = Math.round((completedPhases / totalPhases) * 100);
 
     // Identify missing fields
@@ -195,10 +155,6 @@ export class ProfileCompletionCalculator {
       if (!user.skills) missingFields.push('skills');
       if (!user.support_interests) missingFields.push('support_interests');
     }
-    if (hasProjects && !phase4) {
-      missingFields.push('project status_at_enrollment');
-      missingFields.push('project challenge_description');
-    }
 
     return {
       percentage,
@@ -209,6 +165,7 @@ export class ProfileCompletionCalculator {
 
   /**
    * Get missing fields for a specific phase
+   * Phase 4 is no longer part of profile completion (moved to Projects page)
    */
   static getMissingFieldsForPhase(user: any, phase: number): string[] {
     const missing: string[] = [];
@@ -229,6 +186,13 @@ export class ProfileCompletionCalculator {
         if (!user.current_role) missing.push('current_role');
         if (!user.skills) missing.push('skills');
         if (!user.support_interests) missing.push('support_interests');
+        break;
+      case 4:
+        // Phase 4 has been moved to Projects page
+        // Return empty array as it's no longer part of profile
+        break;
+      case 5:
+        // Phase 5 is optional, no missing fields required
         break;
     }
 

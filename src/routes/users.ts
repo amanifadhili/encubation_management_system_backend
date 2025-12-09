@@ -79,7 +79,8 @@ router.put('/profile/phase5', AuthMiddleware.authenticate, validateBody(profileS
 
 /**
  * @route GET /api/users/profile/phase/:phaseNumber
- * @desc Get specific phase data (1-5)
+ * @desc Get specific phase data (1, 2, 3, or 5)
+ * @note Phase 4 has been moved to Projects page
  * @access Private (All authenticated users)
  */
 router.get('/profile/phase/:phaseNumber', AuthMiddleware.authenticate, UserController.getProfilePhase);

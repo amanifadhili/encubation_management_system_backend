@@ -899,30 +899,14 @@ export class UserController {
           };
           break;
         case 4:
-          // Phase 4 is project-related, get user's project data
-          const projects = await prisma.project.findMany({
-            where: {
-              team: {
-                team_members: {
-                  some: {
-                    user_id: userId
-                  }
-                }
-              }
-            },
-            select: {
-              id: true,
-              name: true,
-              startup_company_name: true,
-              status_at_enrollment: true,
-              challenge_description: true
-            }
+          // Phase 4 has been moved to Projects page
+          // Projects are now managed separately and are not part of profile completion
+          return res.status(400).json({
+            success: false,
+            message: 'Phase 4 (Project Information) has been moved to the Projects page. Please manage your projects there.',
+            code: 'PHASE_MOVED',
+            redirect: '/projects'
           });
-          phaseData = {
-            projects,
-            completed: await ProfileCompletionCalculator.calculatePhase4(userId)
-          };
-          break;
         case 5:
           phaseData = {
             additional_notes: user.additional_notes,
@@ -932,7 +916,7 @@ export class UserController {
         default:
           return res.status(400).json({
             success: false,
-            message: 'Invalid phase number. Must be between 1 and 5.'
+            message: 'Invalid phase number. Valid phases are 1, 2, 3, and 5. (Phase 4 has been moved to Projects page)'
           });
       }
 
