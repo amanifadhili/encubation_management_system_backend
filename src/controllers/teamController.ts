@@ -11,7 +11,6 @@ interface CreateTeamRequest {
   credentials?: {
     name?: string;
     email: string;
-    password: string;
   };
 }
 
@@ -270,17 +269,19 @@ export class TeamController {
         return;
       }
 
-      if (!credentials || !credentials.email || !credentials.password) {
+      if (!credentials || !credentials.email) {
         throw new Error('Team leader credentials are required');
       }
 
-      // Create team and leader user within a transaction
-      const team = await prisma.$transaction(async (tx) => {
+      // Create team and leader user within a transaction (DB work only)
+      const result = await prisma.$transaction(async (tx) => {
         // Create leader user (or find existing by email)
         const leaderName = credentials.name || 'Team Leader';
+        const leaderPassword = PasswordUtils.generateDefaultPassword('incubator');
         let leaderUser = await tx.user.findUnique({ where: { email: credentials.email.toLowerCase() } });
+        let isNewLeader = false;
         if (!leaderUser) {
-          const passwordHash = await PasswordUtils.hash(credentials.password);
+          const passwordHash = await PasswordUtils.hash(leaderPassword);
           leaderUser = await tx.user.create({
             data: {
               name: leaderName,
@@ -289,6 +290,7 @@ export class TeamController {
               role: 'incubator'
             }
           });
+          isNewLeader = true;
         }
 
         const teamRecord = await tx.team.create({
@@ -325,8 +327,39 @@ export class TeamController {
           }
         });
 
-        return teamRecord;
+        return {
+          team: teamRecord,
+          leaderUser,
+          leaderPassword: isNewLeader ? leaderPassword : undefined,
+          isNewLeader
+        };
       });
+
+      const { team, leaderUser, leaderPassword, isNewLeader } = result;
+
+      // Send leader welcome email only when user is newly created (outside transaction to avoid timeouts)
+      if (isNewLeader && leaderPassword) {
+        try {
+          await emailService.sendEmail({
+            to: leaderUser.email,
+            subject: 'Welcome to Incubation Management System',
+            template: 'user/user-created',
+            emailType: 'user_created',
+            userId: leaderUser.id,
+            templateData: {
+              userName: leaderUser.name,
+              userEmail: leaderUser.email,
+              role: leaderUser.role.charAt(0).toUpperCase() + leaderUser.role.slice(1),
+              password: leaderPassword,
+              appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+              currentYear: new Date().getFullYear(),
+              subject: 'Welcome to Incubation Management System'
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send team leader welcome email:', emailError);
+        }
+      }
 
       // Send team created emails
       try {
@@ -361,7 +394,7 @@ export class TeamController {
 
       res.status(201).json({
         success: true,
-        message: 'Team created successfully',
+        message: 'Team created successfully. Login details sent to team leader email.',
         data: { team }
       } as TeamResponse);
 
@@ -384,7 +417,7 @@ export class TeamController {
         team_name: string;
         company_name?: string | null;
         status?: string;
-        credentials: { name?: string; email: string; password: string };
+        credentials: { name?: string; email: string };
       };
 
       // Check if team exists and user has permission

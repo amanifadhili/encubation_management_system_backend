@@ -68,9 +68,19 @@ export class AuthController {
         return;
       }
 
+      // Find team membership for incubators to include teamId
+      let teamId: string | undefined;
+      if (user.role === 'incubator') {
+        const membership = await prisma.teamMember.findFirst({
+          where: { user_id: user.id },
+          select: { team_id: true }
+        });
+        teamId = membership?.team_id;
+      }
+
       // Generate tokens
-      const token = JWTUtils.generateToken(user);
-      const refreshToken = JWTUtils.generateRefreshToken(user);
+      const token = JWTUtils.generateToken(user, teamId);
+      const refreshToken = JWTUtils.generateRefreshToken(user, teamId);
 
       // Return success response
       res.json({
@@ -82,6 +92,7 @@ export class AuthController {
             email: user.email,
             name: user.name,
             role: user.role,
+            teamId
           },
           token,
           refreshToken,
@@ -205,7 +216,8 @@ export class AuthController {
       }
 
       // Generate new access token
-      const newToken = JWTUtils.generateToken(user);
+      // Preserve teamId from refresh token if present
+      const newToken = JWTUtils.generateToken(user, decoded.teamId);
 
       res.json({
         success: true,

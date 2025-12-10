@@ -77,6 +77,7 @@ export class AuthMiddleware {
         email: user.email,
         role: user.role,
         name: user.name,
+        ...(decoded.teamId && { teamId: decoded.teamId })
       };
 
       console.log('✅ Authentication successful:', {

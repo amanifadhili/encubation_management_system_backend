@@ -19,18 +19,20 @@ export interface JWTPayload {
   email: string;
   role: string;
   name: string;
+  teamId?: string;
 }
 
 export class JWTUtils {
   /**
    * Generate JWT token for user
    */
-  static generateToken(user: User): string {
+  static generateToken(user: User, teamId?: string): string {
     const payload: JWTPayload = {
       userId: user.id,
       email: user.email,
       role: user.role,
       name: user.name,
+      ...(teamId && { teamId }),
     };
 
     return jwt.sign(payload, JWT_SECRET, {
@@ -100,12 +102,13 @@ export class JWTUtils {
   /**
    * Generate refresh token (longer expiry)
    */
-  static generateRefreshToken(user: User): string {
+  static generateRefreshToken(user: User, teamId?: string): string {
     const payload: JWTPayload = {
       userId: user.id,
       email: user.email,
       role: user.role,
       name: user.name,
+      ...(teamId && { teamId }),
     };
 
     return jwt.sign(payload, JWT_SECRET, {

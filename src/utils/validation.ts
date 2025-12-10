@@ -173,16 +173,7 @@ export const teamSchemas = {
           'string.pattern.base': 'Please enter a valid email address'
         }),
 
-      password: Joi.string()
-        .min(6)
-        .required()
-        .custom(validatePassword)
-        .messages({
-          'string.empty': 'Password is required',
-          'any.required': 'Password is required',
-          'string.min': 'Password must be at least 6 characters long',
-          'string.pattern.base': 'Password must contain at least 8 characters with uppercase, lowercase, number, and special character (@$!%*?&)'
-        })
+      // Password intentionally omitted; backend generates and emails a default password
     }).required()
     .messages({
       'any.required': 'Team leader credentials are required',
