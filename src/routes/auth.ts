@@ -28,6 +28,13 @@ router.post('/logout', AuthMiddleware.authenticate, AuthController.logout);
 router.get('/me', AuthMiddleware.authenticate, AuthController.getCurrentUser);
 
 /**
+ * @route POST /api/auth/change-password
+ * @desc Change user password
+ * @access Private
+ */
+router.post('/change-password', AuthMiddleware.authenticate, validateBody(authSchemas.changePassword), AuthController.changePassword);
+
+/**
  * @route POST /api/auth/refresh
  * @desc Refresh access token
  * @access Private

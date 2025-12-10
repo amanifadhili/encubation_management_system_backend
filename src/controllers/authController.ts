@@ -18,6 +18,8 @@ interface AuthResponse {
       email: string;
       name: string;
       role: string;
+      password_status?: string;
+      teamId?: string;
     };
     token: string;
     refreshToken?: string;
@@ -102,6 +104,7 @@ export class AuthController {
             email: user.email,
             name: user.name,
             role: user.role,
+            password_status: user.password_status,
             teamId
           },
           token,
@@ -162,6 +165,7 @@ export class AuthController {
           email: true,
           name: true,
           role: true,
+          password_status: true,
           created_at: true,
           updated_at: true,
         },
@@ -263,6 +267,119 @@ export class AuthController {
         success: false,
         message: 'Invalid refresh token',
         code: 'INVALID_REFRESH_TOKEN'
+      });
+    }
+  }
+
+  /**
+   * Change user password
+   */
+  static async changePassword(req: Request, res: Response): Promise<void> {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          success: false,
+          message: 'Not authenticated',
+          code: 'NOT_AUTHENTICATED'
+        });
+        return;
+      }
+
+      const { current_password, new_password } = req.body;
+
+      if (!new_password) {
+        res.status(400).json({
+          success: false,
+          message: 'New password is required',
+          code: 'MISSING_NEW_PASSWORD'
+        });
+        return;
+      }
+
+      // Get user from database
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.userId },
+      });
+
+      if (!user) {
+        res.status(404).json({
+          success: false,
+          message: 'User not found',
+          code: 'USER_NOT_FOUND'
+        });
+        return;
+      }
+
+      // If password_status is 'needs_change', skip current password verification
+      // Otherwise, require and verify current password
+      if (user.password_status !== 'needs_change') {
+        if (!current_password) {
+          res.status(400).json({
+            success: false,
+            message: 'Current password is required',
+            code: 'MISSING_CURRENT_PASSWORD'
+          });
+          return;
+        }
+
+        // Verify current password
+        const isCurrentPasswordValid = await PasswordUtils.verify(current_password, user.password_hash);
+
+        if (!isCurrentPasswordValid) {
+          res.status(401).json({
+            success: false,
+            message: 'Current password is incorrect',
+            code: 'INVALID_CURRENT_PASSWORD'
+          });
+          return;
+        }
+
+        // Check if new password is different from current password
+        const isSamePassword = await PasswordUtils.verify(new_password, user.password_hash);
+        if (isSamePassword) {
+          res.status(400).json({
+            success: false,
+            message: 'New password must be different from current password',
+            code: 'SAME_PASSWORD'
+          });
+          return;
+        }
+      } else {
+        // For forced password changes, still check if new password is different from current
+        const isSamePassword = await PasswordUtils.verify(new_password, user.password_hash);
+        if (isSamePassword) {
+          res.status(400).json({
+            success: false,
+            message: 'New password must be different from your default password',
+            code: 'SAME_PASSWORD'
+          });
+          return;
+        }
+      }
+
+      // Hash new password
+      const newPasswordHash = await PasswordUtils.hash(new_password);
+
+      // Update password and set password_status to 'ok'
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          password_hash: newPasswordHash,
+          password_status: 'ok',
+        },
+      });
+
+      res.json({
+        success: true,
+        message: 'Password changed successfully',
+      });
+
+    } catch (error) {
+      console.error('Change password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        code: 'INTERNAL_ERROR'
       });
     }
   }

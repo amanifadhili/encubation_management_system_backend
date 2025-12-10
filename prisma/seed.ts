@@ -18,6 +18,7 @@ async function main() {
       first_name: 'Sarah',
       middle_name: null,
       last_name: 'Johnson',
+      password_status: 'needs_change',
     },
   });
 

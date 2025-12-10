@@ -17,6 +17,11 @@ enum UserRole {
   incubator
 }
 
+enum PasswordStatus {
+  needs_change
+  ok
+}
+
 enum TeamStatus {
   active
   pending
@@ -109,6 +114,7 @@ model User {
   email         String   @unique
   password_hash String
   role          UserRole
+  password_status PasswordStatus @default(needs_change)
   name          String // Keep for backward compatibility
 
   // Phase 1: Essential Information

@@ -114,6 +114,24 @@ export const authSchemas = {
         'any.required': 'Team ID is required for incubator role',
         'string.pattern.base': 'Invalid team ID format'
       })
+  }),
+
+  changePassword: Joi.object({
+    current_password: Joi.string()
+      .min(1)
+      .optional()
+      .messages({
+        'string.empty': 'Current password cannot be empty if provided'
+      }),
+
+    new_password: Joi.string()
+      .required()
+      .custom(validatePassword)
+      .messages({
+        'string.empty': 'New password is required',
+        'any.required': 'New password is required',
+        'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+      })
   })
 };
 
