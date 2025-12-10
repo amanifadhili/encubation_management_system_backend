@@ -69,6 +69,7 @@ export class AuthController {
       }
 
       // Find team membership for incubators to include teamId
+      // and block login if an incubator has no team assignment
       let teamId: string | undefined;
       if (user.role === 'incubator') {
         const membership = await prisma.teamMember.findFirst({
@@ -76,6 +77,15 @@ export class AuthController {
           select: { team_id: true }
         });
         teamId = membership?.team_id;
+
+        if (!teamId) {
+          res.status(403).json({
+            success: false,
+            message: 'Incubator is not assigned to any team. Please contact support.',
+            code: 'INCUBATOR_NO_TEAM'
+          } as AuthResponse);
+          return;
+        }
       }
 
       // Generate tokens
@@ -167,6 +177,7 @@ export class AuthController {
       }
 
       // Include team membership for incubators so the frontend can load team data
+      // Block access if incubator has no team assignment
       let teamId: string | undefined;
       if (user.role === 'incubator') {
         const membership = await prisma.teamMember.findFirst({
@@ -174,6 +185,15 @@ export class AuthController {
           select: { team_id: true },
         });
         teamId = membership?.team_id;
+
+        if (!teamId) {
+          res.status(403).json({
+            success: false,
+            message: 'Incubator is not assigned to any team. Please contact support.',
+            code: 'INCUBATOR_NO_TEAM'
+          });
+          return;
+        }
       }
 
       res.json({
