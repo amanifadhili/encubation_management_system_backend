@@ -166,10 +166,20 @@ export class AuthController {
         return;
       }
 
+      // Include team membership for incubators so the frontend can load team data
+      let teamId: string | undefined;
+      if (user.role === 'incubator') {
+        const membership = await prisma.teamMember.findFirst({
+          where: { user_id: user.id },
+          select: { team_id: true },
+        });
+        teamId = membership?.team_id;
+      }
+
       res.json({
         success: true,
         message: 'User info retrieved successfully',
-        data: { user },
+        data: { user: { ...user, ...(teamId && { teamId }) } },
       });
 
     } catch (error) {
