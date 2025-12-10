@@ -152,6 +152,18 @@ export const teamSchemas = {
       }),
 
     credentials: Joi.object({
+      name: Joi.string()
+        .min(2)
+        .max(100)
+        .trim()
+        .required()
+        .messages({
+          'string.empty': 'Team leader name is required',
+          'any.required': 'Team leader name is required',
+          'string.min': 'Team leader name must be at least 2 characters',
+          'string.max': 'Team leader name cannot exceed 100 characters'
+        }),
+
       email: Joi.string()
         .required()
         .custom(validateEmail)

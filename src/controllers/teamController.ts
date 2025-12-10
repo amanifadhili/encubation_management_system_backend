@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Team, TeamMember, User, Prisma } from '@prisma/client';
+import { Team, TeamMember, User, Prisma, TeamStatus } from '@prisma/client';
 import prisma from '../config/database';
 import emailService from '../services/emailService';
 import { getTeamNotificationRecipients, getTeamLeaderEmail, getTeamMentorEmails } from '../utils/emailHelpers';
@@ -9,6 +9,7 @@ interface CreateTeamRequest {
   team_name: string;
   company_name?: string;
   credentials?: {
+    name?: string;
     email: string;
     password: string;
   };
@@ -269,33 +270,62 @@ export class TeamController {
         return;
       }
 
-      // Create team
-      const team = await prisma.team.create({
-        data: {
-          team_name,
-          company_name,
-          status: 'pending'
-        },
-        include: {
-          team_members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  role: true
-                }
+      if (!credentials || !credentials.email || !credentials.password) {
+        throw new Error('Team leader credentials are required');
+      }
+
+      // Create team and leader user within a transaction
+      const team = await prisma.$transaction(async (tx) => {
+        // Create leader user (or find existing by email)
+        const leaderName = credentials.name || 'Team Leader';
+        let leaderUser = await tx.user.findUnique({ where: { email: credentials.email.toLowerCase() } });
+        if (!leaderUser) {
+          const passwordHash = await PasswordUtils.hash(credentials.password);
+          leaderUser = await tx.user.create({
+            data: {
+              name: leaderName,
+              email: credentials.email.toLowerCase(),
+              password_hash: passwordHash,
+              role: 'incubator'
+            }
+          });
+        }
+
+        const teamRecord = await tx.team.create({
+          data: {
+            team_name,
+            company_name,
+            status: 'pending',
+            team_members: {
+              create: {
+                user_id: leaderUser.id,
+                role: 'team_leader'
               }
             }
           },
-          _count: {
-            select: {
-              team_members: true,
-              projects: true
+          include: {
+            team_members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true
+                  }
+                }
+              }
+            },
+            _count: {
+              select: {
+                team_members: true,
+                projects: true
+              }
             }
           }
-        }
+        });
+
+        return teamRecord;
       });
 
       // Send team created emails
@@ -350,7 +380,12 @@ export class TeamController {
   static async updateTeam(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { team_name, company_name, status } = req.body;
+      const { team_name, company_name, status, credentials } = req.body as {
+        team_name: string;
+        company_name?: string | null;
+        status?: string;
+        credentials: { name?: string; email: string; password: string };
+      };
 
       // Check if team exists and user has permission
       const existingTeam = await prisma.team.findUnique({
@@ -392,13 +427,27 @@ export class TeamController {
         }
       }
 
+      // Validate and normalize status if provided
+      let normalizedStatus: TeamStatus | undefined;
+      if (status !== undefined) {
+        const allowedStatuses: TeamStatus[] = ['active', 'pending', 'inactive'];
+        if (!allowedStatuses.includes(status as TeamStatus)) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid team status'
+          } as TeamResponse);
+          return;
+        }
+        normalizedStatus = status as TeamStatus;
+      }
+
       // Update team
       const team = await prisma.team.update({
         where: { id },
         data: {
           ...(team_name && { team_name }),
           ...(company_name !== undefined && { company_name }),
-          ...(status && { status })
+          ...(normalizedStatus && { status: normalizedStatus })
         },
         include: {
           team_members: {
