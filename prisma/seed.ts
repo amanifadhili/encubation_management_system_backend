@@ -15,6 +15,9 @@ async function main() {
       password_hash: await PasswordUtils.hash('director123'),
       role: UserRole.director,
       name: 'Dr. Sarah Johnson',
+      first_name: 'Sarah',
+      middle_name: null,
+      last_name: 'Johnson',
     },
   });
 
