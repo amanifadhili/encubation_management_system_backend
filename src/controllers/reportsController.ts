@@ -1248,56 +1248,39 @@ export class ReportsController {
         const mentorAssign = team.mentor_assignments?.[0];
         const mentorUser = mentorAssign?.mentor?.user;
 
-        if (team.projects && team.projects.length > 0) {
-          team.projects.forEach((p) => {
-            rows.push({
-              sn: snCounter++,
-              company_name: team.company_name || '',
-              innovator_name: leader?.name || '',
-              innovator_email: leader?.email || '',
-              innovator_phone: leader?.phone || '',
-              department: leader?.program_of_study || '',
-              project_title: p.name || '-',
-              project_field: p.category || '-',
-              enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
-              planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
-              status_at_enrollment: p.status_at_enrollment || '',
-              current_status: p.status,
-              progress: p.progress,
-              team_status: team.status || '',
-              rdb_registration_status: team.rdb_registration_status || '',
-              mentor_name: mentorUser?.name || '',
-              mentor_contact: mentorUser?.email || mentorUser?.phone || '',
-              mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
-              project_created_at: p.created_at ? p.created_at.toISOString() : '',
-              project_updated_at: p.updated_at ? p.updated_at.toISOString() : '',
-            });
-          });
-        } else {
-          // Team with no projects still included
-          rows.push({
-            sn: snCounter++,
-            company_name: team.company_name || '',
-            innovator_name: leader?.name || '',
-            innovator_email: leader?.email || '',
-            innovator_phone: leader?.phone || '',
-            department: leader?.program_of_study || '',
-            project_title: '-',
-            project_field: '-',
-            enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
-            planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
-            status_at_enrollment: '-',
-            current_status: '-',
-            progress: null,
-            team_status: team.status || '',
-            rdb_registration_status: team.rdb_registration_status || '',
-            mentor_name: mentorUser?.name || '',
-            mentor_contact: mentorUser?.email || mentorUser?.phone || '',
-            mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
-            project_created_at: '',
-            project_updated_at: '',
-          });
-        }
+        const projectsSummary =
+          team.projects && team.projects.length > 0
+            ? team.projects
+                .map((p) => {
+                  const detail = [
+                    `Field: ${p.category || '-'}`,
+                    `Status: ${p.status || '-'}`,
+                    p.status_at_enrollment ? `Enroll: ${p.status_at_enrollment}` : null,
+                    p.progress != null ? `Progress: ${p.progress}%` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' | ');
+                  return `${p.name || '-'}${detail ? ` (${detail})` : ''}`;
+                })
+                .join(' ; ')
+            : '-';
+
+        rows.push({
+          sn: snCounter++,
+          company_name: team.company_name || '',
+          rdb_registration_status: team.rdb_registration_status || '',
+          enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+          team_status: team.status || '',
+          mentor_name: mentorUser?.name || '',
+          mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+          mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+          innovator_name: leader?.name || '',
+          innovator_email: leader?.email || '',
+          innovator_phone: leader?.phone || '',
+          department: leader?.program_of_study || '',
+          planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+          projects: projectsSummary,
+        });
       });
 
       if (exportType === 'csv') {
