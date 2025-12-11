@@ -161,12 +161,14 @@ model User {
 
 // Team model
 model Team {
-  id           String     @id @default(cuid())
-  team_name    String
-  company_name String?
-  status       TeamStatus @default(pending)
-  created_at   DateTime   @default(now())
-  updated_at   DateTime   @updatedAt
+  id                   String     @id @default(cuid())
+  team_name            String
+  company_name         String?
+  status               TeamStatus @default(pending)
+  enrollment_date      DateTime?  // Date the company/team enrolled in the hub
+  rdb_registration_status String? // RDB registration status
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
 
   // Relations
   team_members          TeamMember[]

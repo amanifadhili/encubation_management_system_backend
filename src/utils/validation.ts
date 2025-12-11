@@ -226,6 +226,23 @@ export const teamSchemas = {
       .optional()
       .messages({
         'any.only': `Status must be one of: ${teamStatuses.join(', ')}`
+      }),
+
+    enrollment_date: Joi.string()
+      .isoDate()
+      .optional()
+      .allow(null, '')
+      .messages({
+        'string.isoDate': 'Enrollment date must be a valid ISO date string (YYYY-MM-DD)'
+      }),
+
+    rdb_registration_status: Joi.string()
+      .max(200)
+      .trim()
+      .optional()
+      .allow(null, '')
+      .messages({
+        'string.max': 'RDB registration status cannot exceed 200 characters'
       })
   }).min(1).messages({
     'object.min': 'At least one field must be provided for update'

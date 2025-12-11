@@ -413,11 +413,13 @@ export class TeamController {
   static async updateTeam(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { team_name, company_name, status, credentials } = req.body as {
-        team_name: string;
+      const { team_name, company_name, status, credentials, enrollment_date, rdb_registration_status } = req.body as {
+        team_name?: string;
         company_name?: string | null;
         status?: string;
-        credentials: { name?: string; email: string };
+        credentials?: { name?: string; email: string };
+        enrollment_date?: string | null;
+        rdb_registration_status?: string | null;
       };
 
       // Check if team exists and user has permission
@@ -474,13 +476,32 @@ export class TeamController {
         normalizedStatus = status as TeamStatus;
       }
 
+      // Prepare enrollment_date (convert string to DateTime if provided)
+      let enrollmentDate: Date | null | undefined = undefined;
+      if (enrollment_date !== undefined) {
+        if (enrollment_date) {
+          enrollmentDate = new Date(enrollment_date);
+          if (isNaN(enrollmentDate.getTime())) {
+            res.status(400).json({
+              success: false,
+              message: 'Invalid enrollment date format'
+            } as TeamResponse);
+            return;
+          }
+        } else {
+          enrollmentDate = null;
+        }
+      }
+
       // Update team
       const team = await prisma.team.update({
         where: { id },
         data: {
           ...(team_name && { team_name }),
           ...(company_name !== undefined && { company_name }),
-          ...(normalizedStatus && { status: normalizedStatus })
+          ...(normalizedStatus && { status: normalizedStatus }),
+          ...(enrollment_date !== undefined && { enrollment_date: enrollmentDate }),
+          ...(rdb_registration_status !== undefined && { rdb_registration_status })
         },
         include: {
           team_members: {
