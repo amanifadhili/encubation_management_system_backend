@@ -1144,7 +1144,6 @@ export class ReportsController {
 
       if (status) projectWhere.status = status as any;
       if (category) projectWhere.category = category as any;
-      if (team_id) projectWhere.team_id = team_id as string;
       if (date_from || date_to) {
         projectWhere.created_at = {};
         if (date_from) projectWhere.created_at.gte = new Date(date_from as string);
@@ -1158,127 +1157,147 @@ export class ReportsController {
 
       if (team_status) teamWhere.status = team_status as any;
       if (rdb_registration_status) teamWhere.rdb_registration_status = rdb_registration_status as string;
+      if (team_id) teamWhere.id = team_id as string;
       if (enrollment_from || enrollment_to) {
         teamWhere.enrollment_date = {};
         if (enrollment_from) teamWhere.enrollment_date.gte = new Date(enrollment_from as string);
         if (enrollment_to) teamWhere.enrollment_date.lte = new Date(enrollment_to as string);
       }
 
-      // Restrict scope for incubator/mentor
+      // Restrict scope for incubator/mentor based on teams
       if (userRole === 'incubator') {
-        // limit to teams where user is a team member
-        projectWhere.team = {
-          ...teamWhere,
-          team_members: {
-            some: {
+        teamWhere.team_members = {
+          some: { user_id: userId }
+        };
+      } else if (userRole === 'mentor') {
+        teamWhere.mentor_assignments = {
+          some: {
+            mentor: {
               user_id: userId
             }
           }
         };
-      } else if (userRole === 'mentor') {
-        // limit to teams assigned to mentor
-        projectWhere.team = {
-          ...teamWhere,
-          mentor_assignments: {
-            some: {
-              mentor: {
-                user_id: userId
-              }
-            }
-          }
-        };
-      } else {
-        // manager/director/all: apply teamWhere if provided
-        if (Object.keys(teamWhere).length > 0) {
-          projectWhere.team = teamWhere;
-        }
       }
 
       if (mentor_id) {
-        projectWhere.team = {
-          ...(projectWhere.team || {}),
-          mentor_assignments: {
-            some: {
-              mentor_id: mentor_id as string
-            }
+        teamWhere.mentor_assignments = {
+          some: {
+            mentor_id: mentor_id as string
           }
         };
       }
 
-      const projects = await prisma.project.findMany({
-        where: projectWhere,
+      const teams = await prisma.team.findMany({
+        where: teamWhere,
         orderBy: { created_at: 'desc' },
         include: {
-          team: {
+          team_members: {
+            where: { role: 'team_leader' },
             include: {
-              team_members: {
-                where: { role: 'team_leader' },
-                include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  phone: true,
+                  program_of_study: true,
+                  graduation_year: true,
+                }
+              }
+            }
+          },
+          mentor_assignments: {
+            select: {
+              assigned_at: true,
+              mentor: {
+                select: {
                   user: {
                     select: {
                       name: true,
                       email: true,
                       phone: true,
-                      program_of_study: true,
-                      graduation_year: true,
                     }
-                  }
-                }
-              },
-              mentor_assignments: {
-                select: {
-                  assigned_at: true,
-                  mentor: {
-                    select: {
-                      user: {
-                        select: {
-                          name: true,
-                          email: true,
-                          phone: true,
-                        }
-                      },
-                      phone: true,
-                      id: true,
-                    }
-                  }
+                  },
+                  phone: true,
+                  id: true,
                 }
               }
             }
+          },
+          projects: {
+            where: projectWhere,
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              status_at_enrollment: true,
+              status: true,
+              progress: true,
+              created_at: true,
+              updated_at: true,
+            },
+            orderBy: { created_at: 'desc' }
           }
         }
       });
 
-      const rows = projects.map((p, idx) => {
-        const team = p.team;
-        const leader = team?.team_members?.[0]?.user;
-        const mentorAssign = team?.mentor_assignments?.[0];
+      const rows: any[] = [];
+      let snCounter = 1;
+
+      teams.forEach((team) => {
+        const leader = team.team_members?.[0]?.user;
+        const mentorAssign = team.mentor_assignments?.[0];
         const mentorUser = mentorAssign?.mentor?.user;
-        return {
-          sn: idx + 1,
-          company_name: team?.company_name || '',
-          innovator_name: leader?.name || '',
-          innovator_email: leader?.email || '',
-          innovator_phone: leader?.phone || '',
-          department: leader?.program_of_study || '',
-          project_title: p.name,
-          project_field: p.category,
-          enrollment_date: team?.enrollment_date ? team.enrollment_date.toISOString() : '',
-          planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
-          status_at_enrollment: p.status_at_enrollment || '',
-          current_status: p.status,
-          progress: p.progress,
-          team_status: team?.status || '',
-          rdb_registration_status: team?.rdb_registration_status || '',
-          support_provided: '', // placeholder if not stored
-          challenges: p.challenge_description || '',
-          mentor_name: mentorUser?.name || '',
-          mentor_contact: mentorUser?.email || mentorUser?.phone || '',
-          mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
-          project_created_at: p.created_at.toISOString(),
-          project_updated_at: p.updated_at.toISOString(),
-          company_enrollment_date: team?.enrollment_date ? team.enrollment_date.toISOString() : '',
-          notes: '',
-        };
+
+        if (team.projects && team.projects.length > 0) {
+          team.projects.forEach((p) => {
+            rows.push({
+              sn: snCounter++,
+              company_name: team.company_name || '',
+              innovator_name: leader?.name || '',
+              innovator_email: leader?.email || '',
+              innovator_phone: leader?.phone || '',
+              department: leader?.program_of_study || '',
+              project_title: p.name || '-',
+              project_field: p.category || '-',
+              enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+              planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+              status_at_enrollment: p.status_at_enrollment || '',
+              current_status: p.status,
+              progress: p.progress,
+              team_status: team.status || '',
+              rdb_registration_status: team.rdb_registration_status || '',
+              mentor_name: mentorUser?.name || '',
+              mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+              mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+              project_created_at: p.created_at ? p.created_at.toISOString() : '',
+              project_updated_at: p.updated_at ? p.updated_at.toISOString() : '',
+            });
+          });
+        } else {
+          // Team with no projects still included
+          rows.push({
+            sn: snCounter++,
+            company_name: team.company_name || '',
+            innovator_name: leader?.name || '',
+            innovator_email: leader?.email || '',
+            innovator_phone: leader?.phone || '',
+            department: leader?.program_of_study || '',
+            project_title: '-',
+            project_field: '-',
+            enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+            planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+            status_at_enrollment: '-',
+            current_status: '-',
+            progress: null,
+            team_status: team.status || '',
+            rdb_registration_status: team.rdb_registration_status || '',
+            mentor_name: mentorUser?.name || '',
+            mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+            mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+            project_created_at: '',
+            project_updated_at: '',
+          });
+        }
       });
 
       if (exportType === 'csv') {
