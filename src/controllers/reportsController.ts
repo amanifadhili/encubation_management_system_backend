@@ -1424,27 +1424,63 @@ export class ReportsController {
                 .join(' ; ')
             : '-';
 
-        rows.push({
-          sn: snCounter++,
-          team_id: team.id,
-          company_name: team.company_name || '',
-          rdb_registration_status: team.rdb_registration_status || '',
-          enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
-          team_status: team.status || '',
-          mentor_name: mentorUser?.name || '',
-          mentor_contact: mentorUser?.email || mentorUser?.phone || '',
-          mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
-          innovator_name: leader?.name || '',
-          innovator_email: leader?.email || '',
-          innovator_phone: leader?.phone || '',
-          department: leader?.program_of_study || '',
-          planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
-          projects: projectsSummary,
-        });
+        if (team.projects && team.projects.length > 0) {
+          team.projects.forEach((p) => {
+            rows.push({
+              sn: snCounter++,
+              team_id: team.id,
+              company_name: team.company_name || '',
+              rdb_registration_status: team.rdb_registration_status || '',
+              enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+              team_status: team.status || '',
+              mentor_name: mentorUser?.name || '',
+              mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+              mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+              innovator_name: leader?.name || '',
+              innovator_email: leader?.email || '',
+              innovator_phone: leader?.phone || '',
+              department: leader?.program_of_study || '',
+              planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+              project_title: p.name || '',
+              project_field: p.category || '',
+              status_at_enrollment: p.status_at_enrollment || '',
+              current_status: p.status || '',
+              progress: p.progress ?? null,
+              project_created_at: p.created_at ? p.created_at.toISOString() : '',
+              project_updated_at: p.updated_at ? p.updated_at.toISOString() : '',
+            });
+          });
+        } else {
+          rows.push({
+            sn: snCounter++,
+            team_id: team.id,
+            company_name: team.company_name || '',
+            rdb_registration_status: team.rdb_registration_status || '',
+            enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+            team_status: team.status || '',
+            mentor_name: mentorUser?.name || '',
+            mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+            mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+            innovator_name: leader?.name || '',
+            innovator_email: leader?.email || '',
+            innovator_phone: leader?.phone || '',
+            department: leader?.program_of_study || '',
+            planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+            project_title: '-',
+            project_field: '-',
+            status_at_enrollment: '-',
+            current_status: '-',
+            progress: null,
+            project_created_at: '',
+            project_updated_at: '',
+          });
+        }
       });
 
       if (exportType === 'csv') {
-        const header = Object.keys(rows[0] || {});
+        const header = Object.keys(rows[0] || {}).filter(
+          (h) => h !== 'project_created_at' && h !== 'project_updated_at' && h !== 'team_id'
+        );
         const csv = [
           header.join(','),
           ...rows.map(r => header.map(h => {
