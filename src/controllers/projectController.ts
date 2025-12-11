@@ -699,16 +699,16 @@ export class ProjectController {
       // Create file records for all uploaded files
       const uploadedFiles = [];
       for (const file of files) {
-        const projectFile = await prisma.projectFile.create({
-          data: {
-            project_id: id,
-            file_name: file.originalname,
+      const projectFile = await prisma.projectFile.create({
+        data: {
+          project_id: id,
+          file_name: file.originalname,
             file_path: file.path,
-            file_type: file.mimetype,
-            file_size: file.size,
-            uploaded_by: req.user!.userId
-          }
-        });
+          file_type: file.mimetype,
+          file_size: file.size,
+          uploaded_by: req.user!.userId
+        }
+      });
         uploadedFiles.push(projectFile);
       }
 
