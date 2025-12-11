@@ -1053,6 +1053,165 @@ export class ReportsController {
     }
   }
 
+  static async getCompanyReport(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+      const userId = req.user?.userId;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: 'Company/team id is required' } as ReportsResponse);
+        return;
+      }
+
+      const team = await prisma.team.findUnique({
+        where: { id },
+        include: {
+          team_members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  program_of_study: true,
+                  graduation_year: true,
+                  profile_photo_url: true
+                }
+              }
+            }
+          },
+          mentor_assignments: {
+            include: {
+              mentor: {
+                select: {
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                      phone: true,
+                      profile_photo_url: true
+                    }
+                  },
+                  phone: true,
+                  id: true,
+                }
+              }
+            }
+          },
+          projects: {
+            orderBy: { created_at: 'desc' },
+            include: {
+              project_files: true,
+            }
+          }
+        }
+      });
+
+      if (!team) {
+        res.status(404).json({ success: false, message: 'Company not found' } as ReportsResponse);
+        return;
+      }
+
+      // Scope check for mentor/incubator
+      if (userRole === 'incubator') {
+        const allowed = await prisma.teamMember.findFirst({
+          where: {
+            team_id: id,
+            user_id: userId
+          }
+        });
+        if (!allowed) {
+          res.status(403).json({ success: false, message: 'Forbidden' } as ReportsResponse);
+          return;
+        }
+      } else if (userRole === 'mentor') {
+        const allowed = await prisma.mentorAssignment.findFirst({
+          where: {
+            team_id: id,
+            mentor: { user_id: userId }
+          }
+        });
+        if (!allowed) {
+          res.status(403).json({ success: false, message: 'Forbidden' } as ReportsResponse);
+          return;
+        }
+      }
+
+      const leaderMember = team.team_members.find((m) => m.role === 'team_leader');
+      const mentorAssign = team.mentor_assignments?.[0];
+      const mentorUser = mentorAssign?.mentor?.user;
+
+      const payload = {
+        id: team.id,
+        company_name: team.company_name,
+        team_name: team.team_name,
+        status: team.status,
+        rdb_registration_status: team.rdb_registration_status,
+        enrollment_date: team.enrollment_date,
+        created_at: team.created_at,
+        updated_at: team.updated_at,
+        mentor: mentorAssign
+          ? {
+              name: mentorUser?.name,
+              email: mentorUser?.email,
+              phone: mentorUser?.phone,
+              assigned_at: mentorAssign.assigned_at,
+            }
+          : null,
+        leader: leaderMember
+          ? {
+              name: leaderMember.user.name,
+              email: leaderMember.user.email,
+              phone: leaderMember.user.phone,
+            }
+          : null,
+        members: team.team_members.map((m) => ({
+          id: m.id,
+          role: m.role,
+          joined_at: m.joined_at,
+          name: m.user.name,
+          email: m.user.email,
+          phone: m.user.phone,
+          department: m.user.program_of_study,
+          graduation_year: m.user.graduation_year,
+          photo: m.user.profile_photo_url
+        })),
+        projects: team.projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          status: p.status,
+          status_at_enrollment: p.status_at_enrollment,
+          progress: p.progress,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          files: p.project_files.map((f) => ({
+            id: f.id,
+            name: f.file_name,
+            path: f.file_path,
+            type: f.file_type,
+            size: f.file_size,
+            uploaded_at: f.uploaded_at
+          }))
+        }))
+      };
+
+      res.json({
+        success: true,
+        message: 'Company report retrieved successfully',
+        data: payload
+      } as ReportsResponse);
+    } catch (error) {
+      console.error('Company report error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as ReportsResponse);
+    }
+  }
+
   /**
     * Get dashboard analytics data
     */
@@ -1267,6 +1426,7 @@ export class ReportsController {
 
         rows.push({
           sn: snCounter++,
+          team_id: team.id,
           company_name: team.company_name || '',
           rdb_registration_status: team.rdb_registration_status || '',
           enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
