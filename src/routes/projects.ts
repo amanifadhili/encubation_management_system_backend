@@ -77,10 +77,10 @@ router.get('/:id/files', AuthMiddleware.authenticate, ProjectController.getProje
 
 /**
  * @route POST /api/projects/:id/files
- * @desc Upload project file
+ * @desc Upload project files (supports multiple files)
  * @access Private (Incubator team leader only)
  */
-router.post('/:id/files', AuthMiddleware.authenticate, requireIncubator, upload.single('file'), ProjectController.uploadFile);
+router.post('/:id/files', AuthMiddleware.authenticate, requireIncubator, upload.array('files', 10), ProjectController.uploadFile);
 
 /**
  * @route DELETE /api/projects/:id/files/:fileId
