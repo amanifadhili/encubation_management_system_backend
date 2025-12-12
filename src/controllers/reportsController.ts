@@ -1308,10 +1308,14 @@ export class ReportsController {
         if (date_from) projectWhere.created_at.gte = new Date(date_from as string);
         if (date_to) projectWhere.created_at.lte = new Date(date_to as string);
       }
-      if (progress_min !== undefined || progress_max !== undefined) {
+      const hasProgressMin = progress_min !== undefined && progress_min !== '';
+      const hasProgressMax = progress_max !== undefined && progress_max !== '';
+
+      // Only apply progress filters when a real value is provided (avoid treating empty strings as 0)
+      if (hasProgressMin || hasProgressMax) {
         projectWhere.progress = {};
-        if (progress_min !== undefined) projectWhere.progress.gte = Number(progress_min);
-        if (progress_max !== undefined) projectWhere.progress.lte = Number(progress_max);
+        if (hasProgressMin) projectWhere.progress.gte = Number(progress_min);
+        if (hasProgressMax) projectWhere.progress.lte = Number(progress_max);
       }
 
       if (team_status) teamWhere.status = team_status as any;
@@ -1358,6 +1362,8 @@ export class ReportsController {
                   name: true,
                   email: true,
                   phone: true,
+                  current_role: true,
+                  support_interests: true,
                   program_of_study: true,
                   graduation_year: true,
                 }
@@ -1388,6 +1394,7 @@ export class ReportsController {
               id: true,
               name: true,
               category: true,
+              challenge_description: true,
               status_at_enrollment: true,
               status: true,
               progress: true,
@@ -1439,10 +1446,15 @@ export class ReportsController {
               innovator_name: leader?.name || '',
               innovator_email: leader?.email || '',
               innovator_phone: leader?.phone || '',
+              innovator_current_role: leader?.current_role || '',
+              innovator_support_interests: Array.isArray(leader?.support_interests)
+                ? (leader?.support_interests as unknown as string[]).join(' | ')
+                : leader?.support_interests || '',
               department: leader?.program_of_study || '',
               planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
               project_title: p.name || '',
               project_field: p.category || '',
+              project_challenge_description: p.challenge_description || '',
               status_at_enrollment: p.status_at_enrollment || '',
               current_status: p.status || '',
               progress: p.progress ?? null,
@@ -1464,10 +1476,15 @@ export class ReportsController {
             innovator_name: leader?.name || '',
             innovator_email: leader?.email || '',
             innovator_phone: leader?.phone || '',
+              innovator_current_role: leader?.current_role || '',
+              innovator_support_interests: Array.isArray(leader?.support_interests)
+                ? (leader?.support_interests as unknown as string[]).join(' | ')
+                : leader?.support_interests || '',
             department: leader?.program_of_study || '',
             planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
             project_title: '-',
             project_field: '-',
+              project_challenge_description: '',
             status_at_enrollment: '-',
             current_status: '-',
             progress: null,
