@@ -7,6 +7,8 @@ import { getManagerEmails, getTeamNotificationRecipients } from '../utils/emailH
 interface CreateRequestRequest {
   item_name: string;
   description?: string;
+  notes?: string;
+  quantity?: number;
 }
 
 interface UpdateRequestStatusRequest {
@@ -204,7 +206,7 @@ export class RequestController {
    */
   static async createRequest(req: Request, res: Response): Promise<void> {
     try {
-      const { item_name, description }: CreateRequestRequest = req.body;
+      const { item_name, description, notes, quantity }: CreateRequestRequest = req.body;
 
       // Validate required fields
       if (!item_name) {
@@ -237,6 +239,8 @@ export class RequestController {
           team_id: teamMember.team_id,
           item_name,
           description,
+          notes,
+          quantity,
           requested_by: req.user!.userId
         },
         include: {

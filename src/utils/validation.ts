@@ -682,6 +682,25 @@ export const requestSchemas = {
       .allow('')
       .messages({
         'string.max': 'Description cannot exceed 500 characters'
+      }),
+
+    notes: Joi.string()
+      .max(500)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Notes cannot exceed 500 characters'
+      }),
+
+    quantity: Joi.number()
+      .integer()
+      .min(1)
+      .optional()
+      .messages({
+        'number.base': 'Quantity must be a number',
+        'number.integer': 'Quantity must be an integer',
+        'number.min': 'Quantity must be at least 1'
       })
   }),
 

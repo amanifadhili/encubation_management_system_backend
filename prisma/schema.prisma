@@ -308,6 +308,8 @@ model MaterialRequest {
   team_id      String
   item_name    String
   description  String?
+  notes        String?
+  quantity     Int?
   status       RequestStatus @default(pending)
   requested_by String
   reviewed_by  String?
