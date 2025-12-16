@@ -25,12 +25,6 @@ import emailRoutes from './routes/email';
 // Load environment variables
 dotenv.config();
 
-// Debug: Log CORS configuration on startup
-console.log('🔧 CORS Configuration:', {
-  CORS_ORIGIN: process.env.CORS_ORIGIN,
-  SOCKET_CORS_ORIGIN: process.env.SOCKET_CORS_ORIGIN || 'Using CORS_ORIGIN',
-  NODE_ENV: process.env.NODE_ENV
-});
 
 const app = express();
 const server = createServer(app);
@@ -109,10 +103,7 @@ const startServer = async () => {
     await testConnection();
 
     server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`📊 Health check: http://localhost:${PORT}/health`);
-      console.log(`🔌 Socket.io: WebSocket server initialized`);
-      console.log(`️  Database: ${process.env.DB_NAME} (${process.env.DB_HOST}:${process.env.DB_PORT})`);
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

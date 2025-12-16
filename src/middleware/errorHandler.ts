@@ -428,14 +428,6 @@ export const requestLogger = (req: Request, res: Response, next: NextFunction): 
     const ip = req.ip;
     const userId = (req as any).user?.userId || 'anonymous';
 
-    // Color coding for different status codes
-    let statusColor = '\x1b[32m'; // Green for success
-    if (status >= 400 && status < 500) statusColor = '\x1b[33m'; // Yellow for client errors
-    if (status >= 500) statusColor = '\x1b[31m'; // Red for server errors
-
-    console.log(
-      `${method} ${url} ${statusColor}${status}\x1b[0m ${duration}ms - ${ip} - ${userId}`
-    );
   });
 
   next();

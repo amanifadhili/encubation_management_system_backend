@@ -21,6 +21,13 @@ router.get('/', AuthMiddleware.authenticate, validateQuery(querySchemas.teamFilt
 router.post('/', AuthMiddleware.authenticate, requireManager, validateBody(teamSchemas.create), TeamController.createTeam);
 
 /**
+ * @route GET /api/teams/inactive
+ * @desc Get inactive teams
+ * @access Private (Manager, Director)
+ */
+router.get('/inactive', AuthMiddleware.authenticate, requireManager, TeamController.getInactiveTeams);
+
+/**
  * @route GET /api/teams/:id
  * @desc Get team by ID
  * @access Private (Role-based access)
@@ -36,10 +43,17 @@ router.put('/:id', AuthMiddleware.authenticate, validateBody(teamSchemas.update)
 
 /**
  * @route DELETE /api/teams/:id
- * @desc Delete team
+ * @desc Deactivate team (soft delete)
  * @access Private (Manager, Director)
  */
 router.delete('/:id', AuthMiddleware.authenticate, requireManager, TeamController.deleteTeam);
+
+/**
+ * @route PATCH /api/teams/:id/restore
+ * @desc Restore deactivated team
+ * @access Private (Manager, Director)
+ */
+router.patch('/:id/restore', AuthMiddleware.authenticate, requireManager, TeamController.restoreTeam);
 
 /**
  * @route GET /api/teams/:id/members

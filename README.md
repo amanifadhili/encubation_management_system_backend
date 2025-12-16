@@ -6,6 +6,7 @@ A comprehensive Node.js/Express backend API for the Incubation Management System
 
 - **RESTful API**: Complete CRUD operations for all system entities
 - **Authentication**: JWT-based authentication with role-based access control
+- **Soft delete for users**: Deactivate/reactivate user accounts instead of hard-deleting
 - **Real-time Communication**: Socket.io integration for messaging
 - **File Upload**: Support for project files and documents
 - **Database**: MySQL with Prisma ORM
@@ -97,6 +98,12 @@ src/
 - `GET /api/projects/:id` - Get project
 - `PUT /api/projects/:id` - Update project
 - `DELETE /api/projects/:id` - Delete project
+
+### Users Management (Soft Delete)
+- `GET /api/users` - List **active** users (Director only)
+- `GET /api/users/inactive` - List **inactive** (deactivated) users (Director only)
+- `DELETE /api/users/:id` - **Deactivate** (soft delete) a user (Director only)
+- `PATCH /api/users/:id/restore` - **Restore** an inactive user (Director only)
 
 ### And more endpoints for mentors, inventory, messaging, etc.
 

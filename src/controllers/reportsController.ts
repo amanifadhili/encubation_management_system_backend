@@ -571,8 +571,6 @@ export class ReportsController {
    */
   static async getAdvancedReports(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Advanced reports request:', req.query);
-
       const {
         report_type,
         date_from,
@@ -608,13 +606,8 @@ export class ReportsController {
         limit: parseInt(limit as string, 10)
       };
 
-      console.log('Applying filters:', filters);
-
       const whereClause = ReportsController.buildWhereClause(filters);
-      console.log('Generated where clause:', whereClause);
-
       const data = await ReportsController.executeReportQuery(report_type, whereClause, filters);
-      console.log('Query result:', data);
 
       const totalPages = Math.ceil(data.total / filters.limit!);
 
@@ -663,8 +656,6 @@ export class ReportsController {
 
       const startDate = start_date ? new Date(start_date) : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
       const endDate = end_date ? new Date(end_date) : new Date();
-
-      console.log('Time series request:', { period, metric, startDate, endDate });
 
       const timeSeriesData = await ReportsController.generateTimeSeriesData(metric, period, startDate, endDate);
 
@@ -800,7 +791,6 @@ export class ReportsController {
     */
   static async getCrossEntityAnalytics(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Getting cross-entity analytics...');
 
       const [
         // Teams with highest project success rates
@@ -862,7 +852,6 @@ export class ReportsController {
     */
   static async getSystemMetrics(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Getting comprehensive system metrics...');
 
       const [
         // User metrics
@@ -1535,21 +1524,15 @@ export class ReportsController {
    */
   static async exportReport(req: Request, res: Response): Promise<void> {
     try {
-      console.log('Export report called with body:', req.body);
-      console.log('User:', req.user);
-
       const { report_type, filters = {} } = req.body;
 
       if (!report_type) {
-        console.log('No report_type provided');
         res.status(400).json({
           success: false,
           message: 'Report type is required'
         } as ReportsResponse);
         return;
       }
-
-      console.log('Processing report type:', report_type);
 
       let exportData: any = {};
 
@@ -1705,7 +1688,6 @@ export class ReportsController {
       }
 
       // Return the export data
-      console.log('Export data prepared:', exportData);
       res.json({
         success: true,
         message: `${report_type} report exported successfully`,

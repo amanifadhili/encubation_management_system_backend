@@ -109,7 +109,6 @@ export class SocketHandler {
    */
   private setupEventHandlers(): void {
     this.io.on('connection', (socket: AuthenticatedSocket) => {
-      console.log(`User ${socket.userId} (${socket.userName}) connected`);
 
       // Join user-specific room
       socket.join(`user_${socket.userId}`);
@@ -182,7 +181,6 @@ export class SocketHandler {
 
       // Join conversation room
       socket.join(`conversation_${conversationId}`);
-      console.log(`User ${socket.userId} joined conversation ${conversationId}`);
 
       // Notify other participants
       socket.to(`conversation_${conversationId}`).emit('user_joined', {
@@ -202,7 +200,6 @@ export class SocketHandler {
    */
   private handleLeaveConversation(socket: AuthenticatedSocket, conversationId: string): void {
     socket.leave(`conversation_${conversationId}`);
-    console.log(`User ${socket.userId} left conversation ${conversationId}`);
 
     // Notify other participants
     socket.to(`conversation_${conversationId}`).emit('user_left', {
@@ -373,7 +370,6 @@ export class SocketHandler {
    * Handle user disconnection
    */
   private handleDisconnect(socket: AuthenticatedSocket): void {
-    console.log(`User ${socket.userId} (${socket.userName}) disconnected`);
 
     // Broadcast offline status
     socket.broadcast.emit('user_offline', {

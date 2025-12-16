@@ -18,7 +18,10 @@ export class UserController {
       const skip = (pageNum - 1) * limitNum;
 
       // Build where clause
-      const where: any = {};
+      const where: any = {
+        // Only return active users by default
+        status: 'active'
+      };
 
       // Role filter
       if (role && role !== 'all') {
@@ -91,6 +94,8 @@ export class UserController {
           name: true,
           email: true,
           role: true,
+          status: true,
+          deactivated_at: true,
           created_at: true,
           updated_at: true
         }
@@ -165,13 +170,15 @@ export class UserController {
           name,
           email: email.toLowerCase(),
           password_hash: hashedPassword,
-          role
+          role,
+          status: 'active'
         },
         select: {
           id: true,
           name: true,
           email: true,
           role: true,
+          status: true,
           created_at: true,
           updated_at: true
         }
@@ -307,6 +314,7 @@ export class UserController {
           name: true,
           email: true,
           role: true,
+          status: true,
           created_at: true,
           updated_at: true
         }
@@ -399,20 +407,127 @@ export class UserController {
         });
       }
 
-      // Delete user
-      await prisma.user.delete({
-        where: { id }
+      // If user is already inactive, no-op
+      if (existingUser.status === 'inactive') {
+        return res.status(400).json({
+          success: false,
+          message: 'User is already inactive'
+        });
+      }
+
+      // Soft delete: mark user as inactive and set deactivated_at
+      await prisma.user.update({
+        where: { id },
+        data: {
+          status: 'inactive',
+          deactivated_at: new Date()
+        }
       });
 
       res.json({
         success: true,
-        message: 'User deleted successfully'
+        message: 'User deactivated successfully'
       });
     } catch (error) {
       console.error('Delete user error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to delete user'
+        message: 'Failed to deactivate user'
+      });
+    }
+  }
+
+  /**
+   * Get all inactive users (Director only)
+   * GET /api/users/inactive
+   */
+  static async getInactiveUsers(req: Request, res: Response) {
+    try {
+      const users = await prisma.user.findMany({
+        where: {
+          status: 'inactive'
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          deactivated_at: true,
+          created_at: true,
+          updated_at: true
+        },
+        orderBy: {
+          deactivated_at: 'desc'
+        }
+      });
+
+      res.json({
+        success: true,
+        data: users
+      });
+    } catch (error) {
+      console.error('Get inactive users error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch inactive users'
+      });
+    }
+  }
+
+  /**
+   * Restore inactive user (Director only)
+   * PATCH /api/users/:id/restore
+   */
+  static async restoreUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const existingUser = await prisma.user.findUnique({
+        where: { id }
+      });
+
+      if (!existingUser) {
+        return res.status(404).json({
+          success: false,
+          message: 'User not found'
+        });
+      }
+
+      if (existingUser.status === 'active') {
+        return res.status(400).json({
+          success: false,
+          message: 'User is already active'
+        });
+      }
+
+      const restoredUser = await prisma.user.update({
+        where: { id },
+        data: {
+          status: 'active',
+          deactivated_at: null
+        },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          status: true,
+          created_at: true,
+          updated_at: true
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'User restored successfully',
+        data: restoredUser
+      });
+    } catch (error) {
+      console.error('Restore user error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to restore user'
       });
     }
   }
