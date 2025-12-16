@@ -100,8 +100,6 @@ export const createTransporter = () => {
     transporter.verify((error) => {
       if (error) {
         console.error('❌ Email transporter verification failed:', error);
-      } else {
-        console.log('✅ Email transporter configured successfully');
       }
     });
 

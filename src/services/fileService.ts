@@ -40,7 +40,6 @@ export class FileService {
       if (this.useS3) {
         // For S3, we'd need to download, process, and re-upload
         // This is a simplified version - in production you'd implement this
-        console.log('S3 thumbnail generation not implemented');
         return null;
       }
 
@@ -88,8 +87,6 @@ const image = await (Jimp as any).read(filePath);
       await prisma.projectFile.deleteMany({
         where: { project_id: projectId }
       });
-
-      console.log(`Cleaned up ${projectFiles.length} files for project ${projectId}`);
     } catch (error) {
       console.error('Error cleaning up project files:', error);
       throw error;
@@ -142,8 +139,6 @@ const image = await (Jimp as any).read(filePath);
   ): Promise<void> {
     try {
       // This would create a version record in a file_versions table
-      // For now, we'll just log the version info
-      console.log(`Created version ${version} for file ${originalFileId} in project ${projectId}`);
 
       // In a full implementation, you'd create a file_versions table
       // and store version metadata
@@ -354,7 +349,6 @@ const image = await (Jimp as any).read(filePath);
   ): Promise<void> {
     try {
       // In a full implementation, you'd create a file_access_logs table
-      console.log(`File ${fileId} accessed by user ${userId}: ${action} from ${ipAddress || 'unknown'}`);
 
       // You could store this in a database table for audit purposes
       // await prisma.fileAccessLog.create({

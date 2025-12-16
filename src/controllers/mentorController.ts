@@ -637,21 +637,11 @@ export class MentorController {
    */
   static async assignMentorToTeam(req: Request, res: Response): Promise<void> {
     try {
-      console.log('=== ASSIGN MENTOR TO TEAM DEBUG ===');
-      console.log('Request params:', req.params);
-      console.log('Request body:', req.body);
-      
       const { id } = req.params;
       const { team_id }: AssignMentorRequest = req.body;
 
-      console.log('Extracted mentor ID:', id);
-      console.log('Extracted team_id:', team_id);
-      console.log('team_id type:', typeof team_id);
-      console.log('team_id length:', team_id?.length);
-
       // Validate input
       if (!team_id) {
-        console.log('ERROR: team_id is missing');
         res.status(400).json({
           success: false,
           message: 'Team ID is required'
@@ -660,36 +650,30 @@ export class MentorController {
       }
 
       // Check if mentor exists
-      console.log('Checking if mentor exists with ID:', id);
       const mentor = await prisma.mentor.findUnique({
         where: { id }
       });
 
       if (!mentor) {
-        console.log('ERROR: Mentor not found');
         res.status(404).json({
           success: false,
           message: 'Mentor not found'
         } as MentorResponse);
         return;
       }
-      console.log('Mentor found:', mentor.id);
 
       // Check if team exists
-      console.log('Checking if team exists with ID:', team_id);
       const team = await prisma.team.findUnique({
         where: { id: team_id }
       });
 
       if (!team) {
-        console.log('ERROR: Team not found with ID:', team_id);
         res.status(404).json({
           success: false,
           message: 'Team not found'
         } as MentorResponse);
         return;
       }
-      console.log('Team found:', team.id);
 
       // Check if assignment already exists (mentor can be assigned to multiple teams, but not the same team twice)
       const existingAssignment = await prisma.mentorAssignment.findFirst({

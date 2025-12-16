@@ -148,7 +148,6 @@ export const cleanupFile = async (filePath: string): Promise<void> => {
     if (useS3) {
       // For S3, we would need to delete from S3
       // This would require additional S3 client setup
-      console.log(`S3 file cleanup not implemented for: ${filePath}`);
     } else {
       // For local storage, delete the file
       if (fs.existsSync(filePath)) {

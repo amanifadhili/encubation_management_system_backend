@@ -243,40 +243,7 @@ export class SecurityMiddleware {
       ]
     };
     
-    // Debug logging
-    console.log('🌐 CORS Configuration Applied:', {
-      origin: corsConfig.origin,
-      methods: corsConfig.methods,
-      credentials: corsConfig.credentials,
-      allowedHeaders: corsConfig.allowedHeaders,
-      'CORS_ORIGIN from env': process.env.CORS_ORIGIN
-    });
-    
     app.use(cors(corsConfig));
-    
-    // Additional middleware to log CORS requests
-    app.use((req, res, next) => {
-      if (req.method === 'OPTIONS') {
-        console.log('🔍 CORS Preflight:', {
-          origin: req.headers.origin,
-          method: req.headers['access-control-request-method'],
-          headers: req.headers['access-control-request-headers']
-        });
-      }
-      
-      // Log Authorization header for write requests
-      if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(req.method)) {
-        console.log('📝 Write Request:', {
-          method: req.method,
-          url: req.url,
-          hasAuthHeader: !!req.headers.authorization,
-          authHeaderPreview: req.headers.authorization ? req.headers.authorization.substring(0, 30) + '...' : 'none',
-          origin: req.headers.origin
-        });
-      }
-      
-      next();
-    });
   }
 
   /**
@@ -285,7 +252,6 @@ export class SecurityMiddleware {
   private static applyRateLimiting(app: Application): void {
     // Skip rate limiting in development mode for easier testing
     if (process.env.NODE_ENV === 'development') {
-      console.log('🔧 Rate limiting disabled in development mode');
       return;
     }
 
@@ -471,12 +437,6 @@ export class SecurityAudit {
     this.logs.push(securityEvent);
 
     // In production, you would send this to a logging service
-    console.log(`[SECURITY] ${event.type}: ${event.message}`, {
-      userId: event.userId,
-      ip: event.ip,
-      userAgent: event.userAgent,
-      details: event.details
-    });
 
     // Keep only last 1000 logs in memory
     if (this.logs.length > 1000) {

@@ -83,7 +83,6 @@ class EmailService {
           this.connectionPool.push(transporter);
         }
       }
-      console.log(`✅ Email connection pool initialized with ${this.connectionPool.length} connections`);
     } catch (error) {
       console.error('❌ Failed to initialize email connection pool:', error);
     }
@@ -238,7 +237,6 @@ class EmailService {
    */
   public clearTemplateCache(): void {
     templateCache.clear();
-    console.log('✅ Email template cache cleared');
   }
 
   /**
@@ -308,8 +306,6 @@ class EmailService {
           
           if (shouldSend) {
             filteredRecipients.push(recipient);
-          } else {
-            console.log(`Skipping email to ${recipient} due to email preferences`);
           }
         }
 
@@ -356,7 +352,6 @@ class EmailService {
           maxRetries,
           onRetry: (attempt, delay) => {
             retryAttempts = attempt;
-            console.log(`Retrying email send (attempt ${attempt}/${maxRetries}) after ${delay}ms...`);
           }
         }
       );
@@ -372,8 +367,6 @@ class EmailService {
           info.messageId
         );
       }
-
-      console.log(`✅ Email sent successfully to ${recipients.join(', ')} (retries: ${retryAttempts})`);
       
       return {
         success: true,
@@ -447,7 +440,6 @@ class EmailService {
     
     const successCount = results.filter(r => r.success).length;
     const failCount = results.filter(r => !r.success).length;
-    console.log(`📧 Bulk email batch complete: ${successCount} sent, ${failCount} failed`);
     
     return results;
   }
@@ -542,7 +534,6 @@ class EmailService {
     }
     
     this.connectionPool = [];
-    console.log('✅ Email service connections closed');
   }
 }
 
