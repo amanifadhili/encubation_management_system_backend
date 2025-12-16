@@ -50,8 +50,12 @@ export class MentorController {
       const limitNum = parseInt(limit as string, 10);
       const skip = (pageNum - 1) * limitNum;
 
-      // Build where clause
-      const where: Prisma.MentorWhereInput = {};
+      // Build where clause - by default, only show active mentors
+      const where: Prisma.MentorWhereInput = {
+        user: {
+          status: 'active' // Only show active mentors by default
+        }
+      };
 
       // Search filter
       if (search) {
@@ -395,7 +399,8 @@ export class MentorController {
   }
 
   /**
-   * Delete mentor (Manager/Director only)
+   * Deactivate mentor (soft delete) - Manager/Director only
+   * Deactivates the associated user account instead of hard deleting
    */
   static async deleteMentor(req: Request, res: Response): Promise<void> {
     try {
@@ -405,6 +410,12 @@ export class MentorController {
       const mentor = await prisma.mentor.findUnique({
         where: { id },
         include: {
+          user: {
+            select: {
+              id: true,
+              status: true
+            }
+          },
           _count: {
             select: {
               mentor_assignments: true
@@ -421,32 +432,199 @@ export class MentorController {
         return;
       }
 
-      // Check if mentor has active assignments
-      if (mentor._count.mentor_assignments > 0) {
+      // Check if user is already inactive
+      if (mentor.user.status === 'inactive') {
         res.status(400).json({
           success: false,
-          message: 'Cannot delete mentor with active team assignments'
+          message: 'Mentor is already deactivated'
         } as MentorResponse);
         return;
       }
 
-      // Delete mentor record
-      await prisma.mentor.delete({
-        where: { id }
-      });
-
-      // Delete associated user account
-      await prisma.user.delete({
-        where: { id: mentor.user_id }
+      // Soft delete: deactivate the associated user account
+      await prisma.user.update({
+        where: { id: mentor.user_id },
+        data: {
+          status: 'inactive',
+          deactivated_at: new Date()
+        }
       });
 
       res.json({
         success: true,
-        message: 'Mentor deleted successfully'
+        message: 'Mentor deactivated successfully'
       } as MentorResponse);
 
     } catch (error) {
-      console.error('Delete mentor error:', error);
+      console.error('Deactivate mentor error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as MentorResponse);
+    }
+  }
+
+  /**
+   * Restore deactivated mentor - Manager/Director only
+   */
+  static async restoreMentor(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      // Check if mentor exists
+      const mentor = await prisma.mentor.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              status: true
+            }
+          }
+        }
+      });
+
+      if (!mentor) {
+        res.status(404).json({
+          success: false,
+          message: 'Mentor not found'
+        } as MentorResponse);
+        return;
+      }
+
+      // Check if user is already active
+      if (mentor.user.status === 'active') {
+        res.status(400).json({
+          success: false,
+          message: 'Mentor is already active'
+        } as MentorResponse);
+        return;
+      }
+
+      // Restore: activate the associated user account
+      await prisma.user.update({
+        where: { id: mentor.user_id },
+        data: {
+          status: 'active',
+          deactivated_at: null
+        }
+      });
+
+      // Fetch updated mentor data
+      const restoredMentor = await prisma.mentor.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              status: true
+            }
+          },
+          _count: {
+            select: {
+              mentor_assignments: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Mentor restored successfully',
+        data: restoredMentor
+      } as MentorResponse);
+
+    } catch (error) {
+      console.error('Restore mentor error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as MentorResponse);
+    }
+  }
+
+  /**
+   * Get inactive mentors - Manager/Director only
+   */
+  static async getInactiveMentors(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        search,
+        page = 1,
+        limit = 10
+      } = req.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build where clause for inactive mentors (users with status inactive and role mentor)
+      const where: any = {
+        user: {
+          status: 'inactive',
+          role: 'mentor'
+        }
+      };
+
+      // Search filter
+      if (search) {
+        where.OR = [
+          { expertise: { contains: search as string } },
+          { user: { name: { contains: search as string } } },
+          { user: { email: { contains: search as string } } }
+        ];
+      }
+
+      // Get total count
+      const total = await prisma.mentor.count({ where });
+
+      // Get inactive mentors with pagination
+      const mentors = await prisma.mentor.findMany({
+        where,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              status: true,
+              deactivated_at: true
+            }
+          },
+          _count: {
+            select: {
+              mentor_assignments: true
+            }
+          }
+        },
+        orderBy: {
+          user: {
+            deactivated_at: 'desc'
+          }
+        },
+        skip,
+        take: limitNum
+      });
+
+      const totalPages = Math.ceil(total / limitNum);
+
+      res.json({
+        success: true,
+        data: { mentors },
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: totalPages
+        }
+      } as MentorResponse);
+
+    } catch (error) {
+      console.error('Get inactive mentors error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error'

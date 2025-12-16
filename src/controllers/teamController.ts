@@ -67,9 +67,14 @@ export class TeamController {
         };
       }
 
-      // Status filter
+      // Status filter - by default, only show active/pending teams (exclude inactive)
       if (status && status !== 'all') {
         where.status = status as any;
+      } else {
+        // Default: exclude inactive teams unless explicitly requested
+        where.status = {
+          not: 'inactive'
+        };
       }
 
       // Search filter
@@ -585,7 +590,7 @@ export class TeamController {
   }
 
   /**
-   * Delete team (Manager/Director only)
+   * Deactivate team (soft delete) - Manager/Director only
    */
   static async deleteTeam(req: Request, res: Response): Promise<void> {
     try {
@@ -593,15 +598,7 @@ export class TeamController {
 
       // Check if team exists
       const team = await prisma.team.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              team_members: true,
-              projects: true
-            }
-          }
-        }
+        where: { id }
       });
 
       if (!team) {
@@ -612,27 +609,187 @@ export class TeamController {
         return;
       }
 
-      // Check if team has members or projects
-      if (team._count.team_members > 0 || team._count.projects > 0) {
+      // Check if already inactive
+      if (team.status === 'inactive') {
         res.status(400).json({
           success: false,
-          message: 'Cannot delete team with existing members or projects'
+          message: 'Team is already deactivated'
         } as TeamResponse);
         return;
       }
 
-      // Delete team
-      await prisma.team.delete({
-        where: { id }
+      // Soft delete: set status to inactive and record deactivation timestamp
+      await prisma.team.update({
+        where: { id },
+        data: {
+          status: 'inactive',
+          deactivated_at: new Date()
+        }
       });
 
       res.json({
         success: true,
-        message: 'Team deleted successfully'
+        message: 'Team deactivated successfully'
       } as TeamResponse);
 
     } catch (error) {
-      console.error('Delete team error:', error);
+      console.error('Deactivate team error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as TeamResponse);
+    }
+  }
+
+  /**
+   * Restore deactivated team - Manager/Director only
+   */
+  static async restoreTeam(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+
+      // Check if team exists
+      const team = await prisma.team.findUnique({
+        where: { id }
+      });
+
+      if (!team) {
+        res.status(404).json({
+          success: false,
+          message: 'Team not found'
+        } as TeamResponse);
+        return;
+      }
+
+      // Check if already active
+      if (team.status === 'active' || team.status === 'pending') {
+        res.status(400).json({
+          success: false,
+          message: 'Team is already active'
+        } as TeamResponse);
+        return;
+      }
+
+      // Restore: set status to active and clear deactivation timestamp
+      const restoredTeam = await prisma.team.update({
+        where: { id },
+        data: {
+          status: 'active',
+          deactivated_at: null
+        },
+        include: {
+          team_members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              team_members: true,
+              projects: true
+            }
+          }
+        }
+      });
+
+      res.json({
+        success: true,
+        message: 'Team restored successfully',
+        data: restoredTeam
+      } as TeamResponse);
+
+    } catch (error) {
+      console.error('Restore team error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as TeamResponse);
+    }
+  }
+
+  /**
+   * Get inactive teams - Manager/Director only
+   */
+  static async getInactiveTeams(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        search,
+        page = 1,
+        limit = 10
+      } = req.query;
+
+      const pageNum = parseInt(page as string, 10);
+      const limitNum = parseInt(limit as string, 10);
+      const skip = (pageNum - 1) * limitNum;
+
+      // Build where clause for inactive teams
+      const where: Prisma.TeamWhereInput = {
+        status: 'inactive'
+      };
+
+      // Search filter
+      if (search) {
+        where.OR = [
+          { team_name: { contains: search as string } },
+          { company_name: { contains: search as string } }
+        ];
+      }
+
+      // Get total count
+      const total = await prisma.team.count({ where });
+
+      // Get inactive teams with pagination
+      const teams = await prisma.team.findMany({
+        where,
+        include: {
+          team_members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  role: true
+                }
+              }
+            }
+          },
+          _count: {
+            select: {
+              team_members: true,
+              projects: true
+            }
+          }
+        },
+        orderBy: {
+          deactivated_at: 'desc'
+        },
+        skip,
+        take: limitNum
+      });
+
+      const totalPages = Math.ceil(total / limitNum);
+
+      res.json({
+        success: true,
+        data: { teams },
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          pages: totalPages
+        }
+      } as TeamResponse);
+
+    } catch (error) {
+      console.error('Get inactive teams error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error'

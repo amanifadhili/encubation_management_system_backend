@@ -177,6 +177,7 @@ model Team {
   status               TeamStatus @default(pending)
   enrollment_date      DateTime?  // Date the company/team enrolled in the hub
   rdb_registration_status String? // RDB registration status
+  deactivated_at       DateTime?  // Timestamp when team was deactivated (soft delete)
   created_at           DateTime   @default(now())
   updated_at           DateTime   @updatedAt
 

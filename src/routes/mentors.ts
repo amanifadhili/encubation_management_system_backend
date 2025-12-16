@@ -21,6 +21,13 @@ router.get('/', AuthMiddleware.authenticate, MentorController.getAllMentors);
 router.post('/', AuthMiddleware.authenticate, requireManager, validateBody(mentorSchemas.create), MentorController.createMentor);
 
 /**
+ * @route GET /api/mentors/inactive
+ * @desc Get inactive mentors
+ * @access Private (Manager, Director)
+ */
+router.get('/inactive', AuthMiddleware.authenticate, requireManager, MentorController.getInactiveMentors);
+
+/**
  * @route GET /api/mentors/:id
  * @desc Get mentor details
  * @access Private (Director, Manager, Mentor themselves, Assigned teams)
@@ -36,10 +43,17 @@ router.put('/:id', AuthMiddleware.authenticate, requireManager, validateBody(men
 
 /**
  * @route DELETE /api/mentors/:id
- * @desc Delete mentor
+ * @desc Deactivate mentor (soft delete)
  * @access Private (Manager, Director)
  */
 router.delete('/:id', AuthMiddleware.authenticate, requireManager, MentorController.deleteMentor);
+
+/**
+ * @route PATCH /api/mentors/:id/restore
+ * @desc Restore deactivated mentor
+ * @access Private (Manager, Director)
+ */
+router.patch('/:id/restore', AuthMiddleware.authenticate, requireManager, MentorController.restoreMentor);
 
 /**
  * @route POST /api/mentors/:id/assign
