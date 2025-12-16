@@ -22,6 +22,12 @@ enum PasswordStatus {
   ok
 }
 
+// User account lifecycle status
+enum UserStatus {
+  active
+  inactive
+}
+
 enum TeamStatus {
   active
   pending
@@ -114,6 +120,7 @@ model User {
   email         String   @unique
   password_hash String
   role          UserRole
+  status        UserStatus @default(active)
   password_status PasswordStatus @default(needs_change)
   name          String // Keep for backward compatibility
 
@@ -137,6 +144,9 @@ model User {
 
   // Phase 5: Additional Information
   additional_notes String? @db.Text
+
+  // Soft delete / deactivation tracking
+  deactivated_at DateTime?
 
   // Profile completion tracking
   profile_completion_percentage Int   @default(0)

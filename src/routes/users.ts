@@ -9,7 +9,7 @@ const router = Router();
 
 /**
  * @route GET /api/users
- * @desc Get all users (Director only)
+ * @desc Get all active users (Director only)
  * @access Private (Director)
  */
 router.get('/', AuthMiddleware.authenticate, requireDirector, UserController.getUsers);
@@ -20,6 +20,13 @@ router.get('/', AuthMiddleware.authenticate, requireDirector, UserController.get
  * @access Private (Director)
  */
 router.post('/', AuthMiddleware.authenticate, requireDirector, validateBody(userSchemas.create), UserController.createUser);
+
+/**
+ * @route GET /api/users/inactive
+ * @desc Get all inactive users (Director only)
+ * @access Private (Director)
+ */
+router.get('/inactive', AuthMiddleware.authenticate, requireDirector, UserController.getInactiveUsers);
 
 /**
  * @route GET /api/users/profile
@@ -108,9 +115,16 @@ router.put('/:id', AuthMiddleware.authenticate, requireDirector, validateBody(us
 
 /**
  * @route DELETE /api/users/:id
- * @desc Delete user (Director only)
+ * @desc Deactivate (soft delete) user (Director only)
  * @access Private (Director)
  */
 router.delete('/:id', AuthMiddleware.authenticate, requireDirector, UserController.deleteUser);
+
+/**
+ * @route PATCH /api/users/:id/restore
+ * @desc Restore inactive user (Director only)
+ * @access Private (Director)
+ */
+router.patch('/:id/restore', AuthMiddleware.authenticate, requireDirector, UserController.restoreUser);
 
 export default router;
