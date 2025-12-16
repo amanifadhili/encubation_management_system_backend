@@ -17,6 +17,11 @@ enum UserRole {
   incubator
 }
 
+enum PasswordStatus {
+  needs_change
+  ok
+}
+
 enum TeamStatus {
   active
   pending
@@ -36,6 +41,38 @@ enum ProjectCategory {
   Health
   Education
   Design
+  SocialImpact
+  Sustainability
+  AgriTech
+  HealthTech
+  EdTech
+  RoboticsAI
+  FinTech
+  OpenToAny
+  Other
+}
+
+enum EnrollmentStatus {
+  CurrentlyEnrolled
+  Graduated
+  OnLeave
+  Other
+}
+
+enum ProjectStatusAtEnrollment {
+  Idea
+  Prototype
+  MVP
+  Beta
+  Launched
+}
+
+enum CurrentRoleInProject {
+  ProjectLead
+  Employee
+  FounderCoFounder
+  AttendsWorkshopsOnly
+  Other
 }
 
 enum InventoryStatus {
@@ -77,50 +114,79 @@ model User {
   email         String   @unique
   password_hash String
   role          UserRole
-  name          String
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  password_status PasswordStatus @default(needs_change)
+  name          String // Keep for backward compatibility
+
+  // Phase 1: Essential Information
+  first_name        String?
+  middle_name       String?
+  last_name         String?
+  phone             String?
+  profile_photo_url String?
+
+  // Phase 2: Academic Profile
+  enrollment_status EnrollmentStatus?
+  major_program     String?
+  program_of_study  String?
+  graduation_year   Int?
+
+  // Phase 3: Professional Profile
+  current_role      CurrentRoleInProject?
+  skills            Json? // Array of skills: ["Coding/Development", "UX/UI Design", ...]
+  support_interests Json? // Array of interests: ["Mentorship", "Funding", ...]
+
+  // Phase 5: Additional Information
+  additional_notes String? @db.Text
+
+  // Profile completion tracking
+  profile_completion_percentage Int   @default(0)
+  profile_phase_completion      Json? // Track which phases are complete
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // Relations
-  team_members         TeamMember[]
-  projects_uploaded    ProjectFile[]
-  mentors_created      Mentor[]
-  requests_created     MaterialRequest[] @relation("RequestedBy")
-  requests_reviewed    MaterialRequest[] @relation("ReviewedBy")
-  messages_sent        Message[]
-  notifications_sent   Notification[]
+  team_members          TeamMember[]
+  projects_uploaded     ProjectFile[]
+  mentors_created       Mentor[]
+  requests_created      MaterialRequest[] @relation("RequestedBy")
+  requests_reviewed     MaterialRequest[] @relation("ReviewedBy")
+  messages_sent         Message[]
+  notifications_sent    Notification[]
   announcements_created Announcement[]
-  email_preferences    EmailPreferences?
+  email_preferences     EmailPreferences?
 
   @@map("users")
 }
 
 // Team model
 model Team {
-  id           String      @id @default(cuid())
-  team_name    String
-  company_name String?
-  status       TeamStatus  @default(pending)
-  created_at   DateTime    @default(now())
-  updated_at   DateTime    @updatedAt
+  id                   String     @id @default(cuid())
+  team_name            String
+  company_name         String?
+  status               TeamStatus @default(pending)
+  enrollment_date      DateTime?  // Date the company/team enrolled in the hub
+  rdb_registration_status String? // RDB registration status
+  created_at           DateTime   @default(now())
+  updated_at           DateTime   @updatedAt
 
   // Relations
-  team_members         TeamMember[]
-  projects             Project[]
-  mentor_assignments   MentorAssignment[]
+  team_members          TeamMember[]
+  projects              Project[]
+  mentor_assignments    MentorAssignment[]
   inventory_assignments InventoryAssignment[]
-  material_requests    MaterialRequest[]
+  material_requests     MaterialRequest[]
 
   @@map("teams")
 }
 
 // Team Member model
 model TeamMember {
-  id        String          @id @default(cuid())
+  id        String         @id @default(cuid())
   team_id   String
   user_id   String
-  role      TeamMemberRole  @default(member)
-  joined_at DateTime        @default(now())
+  role      TeamMemberRole @default(member)
+  joined_at DateTime       @default(now())
 
   // Relations
   team Team @relation(fields: [team_id], references: [id], onDelete: Cascade)
@@ -132,18 +198,24 @@ model TeamMember {
 
 // Project model
 model Project {
-  id          String          @id @default(cuid())
+  id          String  @id @default(cuid())
   name        String
-  description String?
-  team_id     String
-  category    ProjectCategory
-  status      ProjectStatus   @default(pending)
-  progress    Int             @default(0)
-  created_at  DateTime        @default(now())
-  updated_at  DateTime        @updatedAt
+  description String? @db.Text
+
+  // Enhanced project information
+  startup_company_name  String?
+  status_at_enrollment  ProjectStatusAtEnrollment?
+  challenge_description String?                    @db.Text
+
+  team_id    String
+  category   ProjectCategory
+  status     ProjectStatus   @default(pending)
+  progress   Int             @default(0)
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
 
   // Relations
-  team        Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  team          Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
   project_files ProjectFile[]
 
   @@map("projects")
@@ -151,33 +223,33 @@ model Project {
 
 // Project File model
 model ProjectFile {
-  id           String   @id @default(cuid())
-  project_id   String
-  file_name    String
-  file_path    String
-  file_type    String?
-  file_size    Int?
-  uploaded_by  String
-  uploaded_at  DateTime @default(now())
+  id          String   @id @default(cuid())
+  project_id  String
+  file_name   String
+  file_path   String
+  file_type   String?
+  file_size   Int?
+  uploaded_by String
+  uploaded_at DateTime @default(now())
 
   // Relations
-  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
-  uploader User   @relation(fields: [uploaded_by], references: [id])
+  project  Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  uploader User    @relation(fields: [uploaded_by], references: [id])
 
   @@map("project_files")
 }
 
 // Mentor model
 model Mentor {
-  id        String   @id @default(cuid())
-  user_id   String   @unique
-  expertise String?
-  phone     String?
+  id         String   @id @default(cuid())
+  user_id    String   @unique
+  expertise  String?
+  phone      String?
   created_at DateTime @default(now())
 
   // Relations
-  user                User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  mentor_assignments  MentorAssignment[]
+  user               User               @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  mentor_assignments MentorAssignment[]
 
   @@map("mentors")
 }
@@ -199,14 +271,14 @@ model MentorAssignment {
 
 // Inventory Item model
 model InventoryItem {
-  id                String          @id @default(cuid())
-  name              String
-  description       String?
+  id                 String          @id @default(cuid())
+  name               String
+  description        String?
   total_quantity     Int             @default(0)
   available_quantity Int             @default(0)
-  status            InventoryStatus @default(available)
-  created_at        DateTime        @default(now())
-  updated_at        DateTime        @updatedAt
+  status             InventoryStatus @default(available)
+  created_at         DateTime        @default(now())
+  updated_at         DateTime        @updatedAt
 
   // Relations
   inventory_assignments InventoryAssignment[]
@@ -216,12 +288,12 @@ model InventoryItem {
 
 // Inventory Assignment model
 model InventoryAssignment {
-  id           String   @id @default(cuid())
-  item_id      String
-  team_id      String
-  quantity     Int
-  assigned_at  DateTime @default(now())
-  returned_at  DateTime?
+  id          String    @id @default(cuid())
+  item_id     String
+  team_id     String
+  quantity    Int
+  assigned_at DateTime  @default(now())
+  returned_at DateTime?
 
   // Relations
   item InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
@@ -232,20 +304,22 @@ model InventoryAssignment {
 
 // Material Request model
 model MaterialRequest {
-  id            String        @id @default(cuid())
-  team_id       String
-  item_name     String
-  description   String?
-  status        RequestStatus @default(pending)
-  requested_by  String
-  reviewed_by   String?
-  requested_at  DateTime      @default(now())
-  reviewed_at   DateTime?
+  id           String        @id @default(cuid())
+  team_id      String
+  item_name    String
+  description  String?
+  notes        String?
+  quantity     Int?
+  status       RequestStatus @default(pending)
+  requested_by String
+  reviewed_by  String?
+  requested_at DateTime      @default(now())
+  reviewed_at  DateTime?
 
   // Relations
-  team          Team  @relation(fields: [team_id], references: [id], onDelete: Cascade)
-  requester     User  @relation("RequestedBy", fields: [requested_by], references: [id])
-  reviewer      User? @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+  team      Team  @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  requester User  @relation("RequestedBy", fields: [requested_by], references: [id])
+  reviewer  User? @relation("ReviewedBy", fields: [reviewed_by], references: [id])
 
   @@map("material_requests")
 }
@@ -269,10 +343,10 @@ model Message {
 
 // Conversation model
 model Conversation {
-  id          String   @id @default(cuid())
+  id           String   @id @default(cuid())
   participants Json
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
 
   // Relations
   messages Message[]
@@ -282,14 +356,14 @@ model Conversation {
 
 // Notification model
 model Notification {
-  id             String         @id @default(cuid())
+  id             String        @id @default(cuid())
   title          String
   message        String
   sender_id      String
   recipient_type RecipientType
   recipient_id   String
-  read_status    Boolean        @default(false)
-  created_at     DateTime       @default(now())
+  read_status    Boolean       @default(false)
+  created_at     DateTime      @default(now())
 
   // Relations
   sender User @relation(fields: [sender_id], references: [id], onDelete: Cascade)

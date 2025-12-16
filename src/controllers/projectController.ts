@@ -6,9 +6,12 @@ import { getTeamNotificationRecipients, getTeamMentorEmails } from '../utils/ema
 
 interface CreateProjectRequest {
   name: string;
-  description?: string;
+  description: string; // Required
   category: string;
   status?: string;
+  startup_company_name?: string; // Optional
+  status_at_enrollment: string; // Required
+  challenge_description: string; // Required
 }
 
 interface UpdateProjectRequest {
@@ -17,6 +20,9 @@ interface UpdateProjectRequest {
   category?: string;
   status?: string;
   progress?: number;
+  startup_company_name?: string;
+  status_at_enrollment?: string;
+  challenge_description?: string;
 }
 
 interface ProjectResponse {
@@ -91,11 +97,14 @@ export class ProjectController {
         where.team_id = team_id as string;
       }
 
-      // Search filter
+      // Search filter - include new fields in search
       if (search) {
         where.OR = [
           { name: { contains: search as string } },
-          { description: { contains: search as string } }
+          { description: { contains: search as string } },
+          { startup_company_name: { contains: search as string } },
+          { challenge_description: { contains: search as string } },
+          { team: { company_name: { contains: search as string } } } // Also search in team's company name
         ];
       }
 
@@ -226,14 +235,21 @@ export class ProjectController {
    */
   static async createProject(req: Request, res: Response): Promise<void> {
     try {
-      const { name, description, category, status }: CreateProjectRequest = req.body;
+      const { name, description, category, status, status_at_enrollment, challenge_description }: CreateProjectRequest = req.body;
 
       // Validate required fields
-      if (!name || !category) {
+      if (!name || !category || !status_at_enrollment || !description || !challenge_description) {
         res.status(400).json({
           success: false,
-          message: 'Project name and category are required',
-          code: 'MISSING_REQUIRED_FIELDS'
+          message: 'Project name, category, status at enrollment, description, and challenge description are required',
+          code: 'MISSING_REQUIRED_FIELDS',
+          errors: [
+            !name && { field: 'name', message: 'Project name is required' },
+            !category && { field: 'category', message: 'Category is required' },
+            !status_at_enrollment && { field: 'status_at_enrollment', message: 'Status at enrollment is required' },
+            !description && { field: 'description', message: 'Project description is required' },
+            !challenge_description && { field: 'challenge_description', message: 'Challenge/problem description is required' }
+          ].filter(Boolean)
         } as ProjectResponse);
         return;
       }
@@ -243,6 +259,15 @@ export class ProjectController {
         where: {
           user_id: req.user?.userId,
           role: 'team_leader'
+        },
+        include: {
+          team: {
+            select: {
+              id: true,
+              team_name: true,
+              company_name: true
+            }
+          }
         }
       });
 
@@ -255,7 +280,7 @@ export class ProjectController {
         return;
       }
 
-      // Create project
+      // Create project - automatically use team's company_name
       const project = await prisma.project.create({
         data: {
           name,
@@ -263,7 +288,10 @@ export class ProjectController {
           category: category as any,
           status: (status as any) || 'pending',
           progress: 0,
-          team_id: teamMember.team_id
+          team_id: teamMember.team_id,
+          startup_company_name: teamMember.team.company_name || null, // Use team's company name
+          status_at_enrollment: status_at_enrollment ? (status_at_enrollment as any) : null,
+          challenge_description: challenge_description || null
         },
         include: {
           team: {
@@ -352,7 +380,7 @@ export class ProjectController {
   static async updateProject(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, description, category, status, progress }: UpdateProjectRequest = req.body;
+      const { name, description, category, status, progress, status_at_enrollment, challenge_description }: UpdateProjectRequest = req.body;
 
       // Check if project exists
       const existingProject = await prisma.project.findUnique({
@@ -399,7 +427,13 @@ export class ProjectController {
         return;
       }
 
-      // Update project
+      // Get team's company_name to use automatically
+      const team = await prisma.team.findUnique({
+        where: { id: existingProject.team_id },
+        select: { company_name: true }
+      });
+
+      // Update project - automatically use team's company_name
       const project = await prisma.project.update({
         where: { id },
         data: {
@@ -407,7 +441,10 @@ export class ProjectController {
           ...(description !== undefined && { description }),
           ...(category && { category: category as any }),
           ...(status && { status: status as any }),
-          ...(progress !== undefined && { progress })
+          ...(progress !== undefined && { progress }),
+          startup_company_name: team?.company_name || null, // Always use team's company name
+          ...(status_at_enrollment !== undefined && { status_at_enrollment: status_at_enrollment ? (status_at_enrollment as any) : null }),
+          ...(challenge_description !== undefined && { challenge_description: challenge_description || null })
         },
         include: {
           team: {
@@ -613,12 +650,12 @@ export class ProjectController {
   static async uploadFile(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const file = (req as any).file;
+      const files = (req.files as Express.Multer.File[]) || [];
 
-      if (!file) {
+      if (!files || files.length === 0) {
         res.status(400).json({
           success: false,
-          message: 'No file uploaded',
+          message: 'No files uploaded',
           code: 'NO_FILE_UPLOADED'
         } as ProjectResponse);
         return;
@@ -659,22 +696,26 @@ export class ProjectController {
         return;
       }
 
-      // Create file record
+      // Create file records for all uploaded files
+      const uploadedFiles = [];
+      for (const file of files) {
       const projectFile = await prisma.projectFile.create({
         data: {
           project_id: id,
           file_name: file.originalname,
-          file_path: file.path, // This would be the actual file path after upload
+            file_path: file.path,
           file_type: file.mimetype,
           file_size: file.size,
           uploaded_by: req.user!.userId
         }
       });
+        uploadedFiles.push(projectFile);
+      }
 
       res.status(201).json({
         success: true,
-        message: 'File uploaded successfully',
-        data: { file: projectFile }
+        message: `${uploadedFiles.length} file(s) uploaded successfully`,
+        data: { files: uploadedFiles }
       });
 
     } catch (error) {

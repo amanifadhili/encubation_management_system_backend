@@ -3,6 +3,19 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import { JWTUtils } from '../utils/jwt';
 import prisma from '../config/database';
 
+const buildDisplayName = (user: {
+  first_name?: string | null;
+  middle_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+}) => {
+  const parts = [user.first_name, user.middle_name, user.last_name]
+    .filter(part => part && part.trim())
+    .map(part => part!.trim());
+
+  return parts.length ? parts.join(' ') : user.email ?? 'User';
+};
+
 interface AuthenticatedSocket extends Socket {
   userId?: string;
   userRole?: string;
@@ -66,8 +79,11 @@ export class SocketHandler {
           where: { id: decoded.userId },
           select: {
             id: true,
-            name: true,
-            role: true
+            role: true,
+            email: true,
+            first_name: true,
+            middle_name: true,
+            last_name: true
           }
         });
 
@@ -78,7 +94,7 @@ export class SocketHandler {
         // Attach user info to socket
         socket.userId = user.id;
         socket.userRole = user.role;
-        socket.userName = user.name;
+        socket.userName = buildDisplayName(user);
 
         next();
       } catch (error) {
@@ -233,9 +249,11 @@ export class SocketHandler {
           sender: {
             select: {
               id: true,
-              name: true,
               email: true,
-              role: true
+              role: true,
+              first_name: true,
+              middle_name: true,
+              last_name: true
             }
           }
         }
@@ -251,7 +269,10 @@ export class SocketHandler {
       this.io.to(`conversation_${conversationId}`).emit('new_message', {
         id: message.id,
         conversationId,
-        sender: message.sender,
+        sender: {
+          ...message.sender,
+          display_name: buildDisplayName(message.sender)
+        },
         content: message.content,
         messageType: message.message_type,
         filePath: message.file_path,
@@ -263,7 +284,10 @@ export class SocketHandler {
         if (participantId !== socket.userId) {
           this.io.to(`user_${participantId}`).emit('message_notification', {
             conversationId,
-            sender: message.sender,
+            sender: {
+              ...message.sender,
+              display_name: buildDisplayName(message.sender)
+            },
             content: message.content,
             messageType: message.message_type
           });

@@ -9,7 +9,10 @@ const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d
 const userRoles = ['director', 'manager', 'mentor', 'incubator'];
 const teamStatuses = ['active', 'pending', 'inactive'];
 const projectStatuses = ['active', 'pending', 'completed', 'on_hold'];
-const projectCategories = ['Technology', 'Agriculture', 'Health', 'Education', 'Design'];
+const projectCategories = ['Technology', 'Agriculture', 'Health', 'Education', 'Design', 'SocialImpact', 'Sustainability', 'AgriTech', 'HealthTech', 'EdTech', 'RoboticsAI', 'FinTech', 'OpenToAny', 'Other'];
+const enrollmentStatuses = ['CurrentlyEnrolled', 'Graduated', 'OnLeave', 'Other'];
+const projectStatusAtEnrollment = ['Idea', 'Prototype', 'MVP', 'Beta', 'Launched'];
+const currentRoles = ['ProjectLead', 'Employee', 'FounderCoFounder', 'AttendsWorkshopsOnly', 'Other'];
 const inventoryStatuses = ['available', 'low_stock', 'out_of_stock'];
 const requestStatuses = ['pending', 'approved', 'declined'];
 const messageTypes = ['text', 'file'];
@@ -111,6 +114,24 @@ export const authSchemas = {
         'any.required': 'Team ID is required for incubator role',
         'string.pattern.base': 'Invalid team ID format'
       })
+  }),
+
+  changePassword: Joi.object({
+    current_password: Joi.string()
+      .min(1)
+      .optional()
+      .messages({
+        'string.empty': 'Current password cannot be empty if provided'
+      }),
+
+    new_password: Joi.string()
+      .required()
+      .custom(validatePassword)
+      .messages({
+        'string.empty': 'New password is required',
+        'any.required': 'New password is required',
+        'string.pattern.base': 'Password must be at least 8 characters with uppercase, lowercase, number, and special character'
+      })
   })
 };
 
@@ -149,6 +170,18 @@ export const teamSchemas = {
       }),
 
     credentials: Joi.object({
+      name: Joi.string()
+        .min(2)
+        .max(100)
+        .trim()
+        .required()
+        .messages({
+          'string.empty': 'Team leader name is required',
+          'any.required': 'Team leader name is required',
+          'string.min': 'Team leader name must be at least 2 characters',
+          'string.max': 'Team leader name cannot exceed 100 characters'
+        }),
+
       email: Joi.string()
         .required()
         .custom(validateEmail)
@@ -158,16 +191,7 @@ export const teamSchemas = {
           'string.pattern.base': 'Please enter a valid email address'
         }),
 
-      password: Joi.string()
-        .min(6)
-        .required()
-        .custom(validatePassword)
-        .messages({
-          'string.empty': 'Password is required',
-          'any.required': 'Password is required',
-          'string.min': 'Password must be at least 6 characters long',
-          'string.pattern.base': 'Password must contain at least 8 characters with uppercase, lowercase, number, and special character (@$!%*?&)'
-        })
+      // Password intentionally omitted; backend generates and emails a default password
     }).required()
     .messages({
       'any.required': 'Team leader credentials are required',
@@ -202,6 +226,23 @@ export const teamSchemas = {
       .optional()
       .messages({
         'any.only': `Status must be one of: ${teamStatuses.join(', ')}`
+      }),
+
+    enrollment_date: Joi.string()
+      .isoDate()
+      .optional()
+      .allow(null, '')
+      .messages({
+        'string.isoDate': 'Enrollment date must be a valid ISO date string (YYYY-MM-DD)'
+      }),
+
+    rdb_registration_status: Joi.string()
+      .max(200)
+      .trim()
+      .optional()
+      .allow(null, '')
+      .messages({
+        'string.max': 'RDB registration status cannot exceed 200 characters'
       })
   }).min(1).messages({
     'object.min': 'At least one field must be provided for update'
@@ -254,12 +295,15 @@ export const projectSchemas = {
       }),
 
     description: Joi.string()
-      .max(1000)
+      .min(50)
+      .max(5000)
       .trim()
-      .optional()
-      .allow('')
+      .required()
       .messages({
-        'string.max': 'Description cannot exceed 1000 characters'
+        'string.empty': 'Project description is required',
+        'string.min': 'Description should be at least 50 characters (recommended: 200-500 words)',
+        'string.max': 'Description cannot exceed 5000 characters',
+        'any.required': 'Project description is required'
       }),
 
     category: Joi.string()
@@ -286,6 +330,37 @@ export const projectSchemas = {
         'number.base': 'Progress must be a number',
         'number.min': 'Progress cannot be less than 0',
         'number.max': 'Progress cannot exceed 100'
+      }),
+
+    // Enhanced project fields
+    startup_company_name: Joi.string()
+      .max(200)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Startup/Company name cannot exceed 200 characters'
+      }),
+
+    status_at_enrollment: Joi.string()
+      .valid(...projectStatusAtEnrollment)
+      .required()
+      .messages({
+        'any.only': `Status at enrollment must be one of: ${projectStatusAtEnrollment.join(', ')}`,
+        'any.required': 'Status at enrollment is required',
+        'string.empty': 'Status at enrollment is required'
+      }),
+
+    challenge_description: Joi.string()
+      .min(30)
+      .max(3000)
+      .trim()
+      .required()
+      .messages({
+        'string.empty': 'Challenge/problem description is required',
+        'string.min': 'Challenge description should be at least 30 characters (recommended: 100-300 words)',
+        'string.max': 'Challenge description cannot exceed 3000 characters',
+        'any.required': 'Challenge/problem description is required'
       })
   }),
 
@@ -301,12 +376,14 @@ export const projectSchemas = {
       }),
 
     description: Joi.string()
-      .max(1000)
+      .min(50)
+      .max(5000)
       .trim()
       .optional()
       .allow('')
       .messages({
-        'string.max': 'Description cannot exceed 1000 characters'
+        'string.min': 'Description should be at least 50 characters (recommended: 200-500 words)',
+        'string.max': 'Description cannot exceed 5000 characters'
       }),
 
     category: Joi.string()
@@ -332,6 +409,34 @@ export const projectSchemas = {
         'number.base': 'Progress must be a number',
         'number.min': 'Progress cannot be less than 0',
         'number.max': 'Progress cannot exceed 100'
+      }),
+
+    // Enhanced project fields
+    startup_company_name: Joi.string()
+      .max(200)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Startup/Company name cannot exceed 200 characters'
+      }),
+
+    status_at_enrollment: Joi.string()
+      .valid(...projectStatusAtEnrollment)
+      .optional()
+      .messages({
+        'any.only': `Status at enrollment must be one of: ${projectStatusAtEnrollment.join(', ')}`
+      }),
+
+    challenge_description: Joi.string()
+      .min(30)
+      .max(3000)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.min': 'Challenge description should be at least 30 characters (recommended: 100-300 words)',
+        'string.max': 'Challenge description cannot exceed 3000 characters'
       })
   }).min(1).messages({
     'object.min': 'At least one field must be provided for update'
@@ -577,6 +682,25 @@ export const requestSchemas = {
       .allow('')
       .messages({
         'string.max': 'Description cannot exceed 500 characters'
+      }),
+
+    notes: Joi.string()
+      .max(500)
+      .trim()
+      .optional()
+      .allow('')
+      .messages({
+        'string.max': 'Notes cannot exceed 500 characters'
+      }),
+
+    quantity: Joi.number()
+      .integer()
+      .min(1)
+      .optional()
+      .messages({
+        'number.base': 'Quantity must be a number',
+        'number.integer': 'Quantity must be an integer',
+        'number.min': 'Quantity must be at least 1'
       })
   }),
 
@@ -1049,6 +1173,18 @@ export const userSchemas = {
       .messages({
         'any.only': `Role must be one of: ${userRoles.join(', ')}`,
         'any.required': 'Role is required'
+      }),
+
+    teamId: Joi.string()
+      .custom(validateObjectId)
+      .when('role', {
+        is: 'incubator',
+        then: Joi.required(),
+        otherwise: Joi.optional()
+      })
+      .messages({
+        'any.required': 'Team ID is required for incubator role',
+        'string.pattern.base': 'Invalid team ID format'
       })
   }),
 
@@ -1075,6 +1211,18 @@ export const userSchemas = {
       .optional()
       .messages({
         'any.only': `Role must be one of: ${userRoles.join(', ')}`
+      }),
+
+    teamId: Joi.string()
+      .custom(validateObjectId)
+      .when('role', {
+        is: 'incubator',
+        then: Joi.required(),
+        otherwise: Joi.optional()
+      })
+      .messages({
+        'any.required': 'Team ID is required for incubator role',
+        'string.pattern.base': 'Invalid team ID format'
       }),
 
     password: Joi.string()

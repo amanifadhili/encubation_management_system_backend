@@ -3,6 +3,7 @@ import { UserController } from '../controllers/userController';
 import { AuthMiddleware, requireDirector } from '../middleware/auth';
 import { validateBody } from '../middleware/validation';
 import { userSchemas } from '../utils/validation';
+import { profileSchemas } from '../utils/profileValidation';
 
 const router = Router();
 
@@ -33,6 +34,63 @@ router.get('/profile', AuthMiddleware.authenticate, UserController.getProfile);
  * @access Private (All authenticated users)
  */
 router.put('/profile', AuthMiddleware.authenticate, UserController.updateProfile);
+
+/**
+ * @route GET /api/users/profile/extended
+ * @desc Get extended profile with all fields
+ * @access Private (All authenticated users)
+ */
+router.get('/profile/extended', AuthMiddleware.authenticate, UserController.getExtendedProfile);
+
+/**
+ * @route GET /api/users/profile/completion
+ * @desc Get profile completion percentage and status
+ * @access Private (All authenticated users)
+ */
+router.get('/profile/completion', AuthMiddleware.authenticate, UserController.getProfileCompletion);
+
+/**
+ * @route PUT /api/users/profile/phase1
+ * @desc Update Phase 1: Basic Information
+ * @access Private (All authenticated users)
+ */
+router.put('/profile/phase1', AuthMiddleware.authenticate, validateBody(profileSchemas.phase1Basic), UserController.updateProfilePhase1);
+
+/**
+ * @route PUT /api/users/profile/phase2
+ * @desc Update Phase 2: Academic Profile
+ * @access Private (All authenticated users)
+ */
+router.put('/profile/phase2', AuthMiddleware.authenticate, validateBody(profileSchemas.phase2Academic), UserController.updateProfilePhase2);
+
+/**
+ * @route PUT /api/users/profile/phase3
+ * @desc Update Phase 3: Professional Profile
+ * @access Private (All authenticated users)
+ */
+router.put('/profile/phase3', AuthMiddleware.authenticate, validateBody(profileSchemas.phase3Professional), UserController.updateProfilePhase3);
+
+/**
+ * @route PUT /api/users/profile/phase5
+ * @desc Update Phase 5: Additional Information
+ * @access Private (All authenticated users)
+ */
+router.put('/profile/phase5', AuthMiddleware.authenticate, validateBody(profileSchemas.phase5Additional), UserController.updateProfilePhase5);
+
+/**
+ * @route GET /api/users/profile/phase/:phaseNumber
+ * @desc Get specific phase data (1, 2, 3, or 5)
+ * @note Phase 4 has been moved to Projects page
+ * @access Private (All authenticated users)
+ */
+router.get('/profile/phase/:phaseNumber', AuthMiddleware.authenticate, UserController.getProfilePhase);
+
+/**
+ * @route PUT /api/users/profile/photo
+ * @desc Upload/update profile photo URL
+ * @access Private (All authenticated users)
+ */
+router.put('/profile/photo', AuthMiddleware.authenticate, validateBody(profileSchemas.photoUpload), UserController.uploadProfilePhoto);
 
 /**
  * @route GET /api/users/:id

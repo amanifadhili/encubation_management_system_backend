@@ -61,6 +61,20 @@ router.get('/system-metrics', AuthMiddleware.authenticate, ReportsController.get
 router.get('/cross-entity', AuthMiddleware.authenticate, ReportsController.getCrossEntityAnalytics);
 
 /**
+ * @route GET /api/reports/general
+ * @desc General combined report (projects/teams/mentors) with CSV/JSON
+ * @access Private (Director, Manager; mentors/incubators limited to their scope)
+ */
+router.get('/general', AuthMiddleware.authenticate, ReportsController.getGeneralReport);
+
+/**
+ * @route GET /api/reports/company/:id
+ * @desc Detailed company report (team + members + projects/files)
+ * @access Private (Director, Manager; mentors/incubators limited to their scope)
+ */
+router.get('/company/:id', AuthMiddleware.authenticate, ReportsController.getCompanyReport);
+
+/**
  * @route POST /api/reports/export
  * @desc Export reports as data for PDF generation
  * @access Private (Director, Manager)

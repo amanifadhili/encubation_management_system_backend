@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Team, TeamMember, User, Prisma } from '@prisma/client';
+import { Team, TeamMember, User, Prisma, TeamStatus } from '@prisma/client';
 import prisma from '../config/database';
 import emailService from '../services/emailService';
 import { getTeamNotificationRecipients, getTeamLeaderEmail, getTeamMentorEmails } from '../utils/emailHelpers';
@@ -9,8 +9,8 @@ interface CreateTeamRequest {
   team_name: string;
   company_name?: string;
   credentials?: {
+    name?: string;
     email: string;
-    password: string;
   };
 }
 
@@ -269,34 +269,97 @@ export class TeamController {
         return;
       }
 
-      // Create team
-      const team = await prisma.team.create({
-        data: {
-          team_name,
-          company_name,
-          status: 'pending'
-        },
-        include: {
-          team_members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                  role: true
-                }
+      if (!credentials || !credentials.email) {
+        throw new Error('Team leader credentials are required');
+      }
+
+      // Create team and leader user within a transaction (DB work only)
+      const result = await prisma.$transaction(async (tx) => {
+        // Create leader user (or find existing by email)
+        const leaderName = credentials.name || 'Team Leader';
+        const leaderPassword = PasswordUtils.generateDefaultPassword('incubator');
+        let leaderUser = await tx.user.findUnique({ where: { email: credentials.email.toLowerCase() } });
+        let isNewLeader = false;
+        if (!leaderUser) {
+          const passwordHash = await PasswordUtils.hash(leaderPassword);
+          leaderUser = await tx.user.create({
+            data: {
+              name: leaderName,
+              email: credentials.email.toLowerCase(),
+              password_hash: passwordHash,
+              role: 'incubator'
+            }
+          });
+          isNewLeader = true;
+        }
+
+        const teamRecord = await tx.team.create({
+          data: {
+            team_name,
+            company_name,
+            status: 'pending',
+            team_members: {
+              create: {
+                user_id: leaderUser.id,
+                role: 'team_leader'
               }
             }
           },
-          _count: {
-            select: {
-              team_members: true,
-              projects: true
+          include: {
+            team_members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true
+                  }
+                }
+              }
+            },
+            _count: {
+              select: {
+                team_members: true,
+                projects: true
+              }
             }
           }
-        }
+        });
+
+        return {
+          team: teamRecord,
+          leaderUser,
+          leaderPassword: isNewLeader ? leaderPassword : undefined,
+          isNewLeader
+        };
       });
+
+      const { team, leaderUser, leaderPassword, isNewLeader } = result;
+
+      // Send leader welcome email only when user is newly created (outside transaction to avoid timeouts)
+      if (isNewLeader && leaderPassword) {
+        try {
+          await emailService.sendEmail({
+            to: leaderUser.email,
+            subject: 'Welcome to Incubation Management System',
+            template: 'user/user-created',
+            emailType: 'user_created',
+            userId: leaderUser.id,
+            templateData: {
+              userName: leaderUser.name,
+              userEmail: leaderUser.email,
+              role: leaderUser.role.charAt(0).toUpperCase() + leaderUser.role.slice(1),
+              password: leaderPassword,
+              appUrl: process.env.FRONTEND_URL || process.env.APP_URL || 'http://localhost:3000',
+              currentYear: new Date().getFullYear(),
+              subject: 'Welcome to Incubation Management System'
+            }
+          });
+        } catch (emailError) {
+          console.error('Failed to send team leader welcome email:', emailError);
+        }
+      }
 
       // Send team created emails
       try {
@@ -331,7 +394,7 @@ export class TeamController {
 
       res.status(201).json({
         success: true,
-        message: 'Team created successfully',
+        message: 'Team created successfully. Login details sent to team leader email.',
         data: { team }
       } as TeamResponse);
 
@@ -350,7 +413,14 @@ export class TeamController {
   static async updateTeam(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { team_name, company_name, status } = req.body;
+      const { team_name, company_name, status, credentials, enrollment_date, rdb_registration_status } = req.body as {
+        team_name?: string;
+        company_name?: string | null;
+        status?: string;
+        credentials?: { name?: string; email: string };
+        enrollment_date?: string | null;
+        rdb_registration_status?: string | null;
+      };
 
       // Check if team exists and user has permission
       const existingTeam = await prisma.team.findUnique({
@@ -392,13 +462,46 @@ export class TeamController {
         }
       }
 
+      // Validate and normalize status if provided
+      let normalizedStatus: TeamStatus | undefined;
+      if (status !== undefined) {
+        const allowedStatuses: TeamStatus[] = ['active', 'pending', 'inactive'];
+        if (!allowedStatuses.includes(status as TeamStatus)) {
+          res.status(400).json({
+            success: false,
+            message: 'Invalid team status'
+          } as TeamResponse);
+          return;
+        }
+        normalizedStatus = status as TeamStatus;
+      }
+
+      // Prepare enrollment_date (convert string to DateTime if provided)
+      let enrollmentDate: Date | null | undefined = undefined;
+      if (enrollment_date !== undefined) {
+        if (enrollment_date) {
+          enrollmentDate = new Date(enrollment_date);
+          if (isNaN(enrollmentDate.getTime())) {
+            res.status(400).json({
+              success: false,
+              message: 'Invalid enrollment date format'
+            } as TeamResponse);
+            return;
+          }
+        } else {
+          enrollmentDate = null;
+        }
+      }
+
       // Update team
       const team = await prisma.team.update({
         where: { id },
         data: {
           ...(team_name && { team_name }),
           ...(company_name !== undefined && { company_name }),
-          ...(status && { status })
+          ...(normalizedStatus && { status: normalizedStatus }),
+          ...(enrollment_date !== undefined && { enrollment_date: enrollmentDate }),
+          ...(rdb_registration_status !== undefined && { rdb_registration_status })
         },
         include: {
           team_members: {

@@ -1053,6 +1053,165 @@ export class ReportsController {
     }
   }
 
+  static async getCompanyReport(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const userRole = req.user?.role;
+      const userId = req.user?.userId;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: 'Company/team id is required' } as ReportsResponse);
+        return;
+      }
+
+      const team = await prisma.team.findUnique({
+        where: { id },
+        include: {
+          team_members: {
+            include: {
+              user: {
+                select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  phone: true,
+                  program_of_study: true,
+                  graduation_year: true,
+                  profile_photo_url: true
+                }
+              }
+            }
+          },
+          mentor_assignments: {
+            include: {
+              mentor: {
+                select: {
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                      phone: true,
+                      profile_photo_url: true
+                    }
+                  },
+                  phone: true,
+                  id: true,
+                }
+              }
+            }
+          },
+          projects: {
+            orderBy: { created_at: 'desc' },
+            include: {
+              project_files: true,
+            }
+          }
+        }
+      });
+
+      if (!team) {
+        res.status(404).json({ success: false, message: 'Company not found' } as ReportsResponse);
+        return;
+      }
+
+      // Scope check for mentor/incubator
+      if (userRole === 'incubator') {
+        const allowed = await prisma.teamMember.findFirst({
+          where: {
+            team_id: id,
+            user_id: userId
+          }
+        });
+        if (!allowed) {
+          res.status(403).json({ success: false, message: 'Forbidden' } as ReportsResponse);
+          return;
+        }
+      } else if (userRole === 'mentor') {
+        const allowed = await prisma.mentorAssignment.findFirst({
+          where: {
+            team_id: id,
+            mentor: { user_id: userId }
+          }
+        });
+        if (!allowed) {
+          res.status(403).json({ success: false, message: 'Forbidden' } as ReportsResponse);
+          return;
+        }
+      }
+
+      const leaderMember = team.team_members.find((m) => m.role === 'team_leader');
+      const mentorAssign = team.mentor_assignments?.[0];
+      const mentorUser = mentorAssign?.mentor?.user;
+
+      const payload = {
+        id: team.id,
+        company_name: team.company_name,
+        team_name: team.team_name,
+        status: team.status,
+        rdb_registration_status: team.rdb_registration_status,
+        enrollment_date: team.enrollment_date,
+        created_at: team.created_at,
+        updated_at: team.updated_at,
+        mentor: mentorAssign
+          ? {
+              name: mentorUser?.name,
+              email: mentorUser?.email,
+              phone: mentorUser?.phone,
+              assigned_at: mentorAssign.assigned_at,
+            }
+          : null,
+        leader: leaderMember
+          ? {
+              name: leaderMember.user.name,
+              email: leaderMember.user.email,
+              phone: leaderMember.user.phone,
+            }
+          : null,
+        members: team.team_members.map((m) => ({
+          id: m.id,
+          role: m.role,
+          joined_at: m.joined_at,
+          name: m.user.name,
+          email: m.user.email,
+          phone: m.user.phone,
+          department: m.user.program_of_study,
+          graduation_year: m.user.graduation_year,
+          photo: m.user.profile_photo_url
+        })),
+        projects: team.projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          category: p.category,
+          status: p.status,
+          status_at_enrollment: p.status_at_enrollment,
+          progress: p.progress,
+          created_at: p.created_at,
+          updated_at: p.updated_at,
+          files: p.project_files.map((f) => ({
+            id: f.id,
+            name: f.file_name,
+            path: f.file_path,
+            type: f.file_type,
+            size: f.file_size,
+            uploaded_at: f.uploaded_at
+          }))
+        }))
+      };
+
+      res.json({
+        success: true,
+        message: 'Company report retrieved successfully',
+        data: payload
+      } as ReportsResponse);
+    } catch (error) {
+      console.error('Company report error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as ReportsResponse);
+    }
+  }
+
   /**
     * Get dashboard analytics data
     */
@@ -1106,6 +1265,264 @@ export class ReportsController {
 
     } catch (error) {
       console.error('Get dashboard analytics error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error'
+      } as ReportsResponse);
+    }
+  }
+
+  /**
+   * General report (combined projects/teams/mentors) with CSV/JSON output
+   */
+  static async getGeneralReport(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        export: exportType,
+        status,
+        category,
+        team_id,
+        mentor_id,
+        date_from,
+        date_to,
+        progress_min,
+        progress_max,
+        team_status,
+        enrollment_from,
+        enrollment_to,
+        rdb_registration_status,
+      } = req.query;
+
+      // Role-based scope
+      const userRole = req.user?.role;
+      const userId = req.user?.userId;
+
+      // Build filters
+      const projectWhere: any = {};
+      const teamWhere: any = {};
+
+      if (status) projectWhere.status = status as any;
+      if (category) projectWhere.category = category as any;
+      if (date_from || date_to) {
+        projectWhere.created_at = {};
+        if (date_from) projectWhere.created_at.gte = new Date(date_from as string);
+        if (date_to) projectWhere.created_at.lte = new Date(date_to as string);
+      }
+      const hasProgressMin = progress_min !== undefined && progress_min !== '';
+      const hasProgressMax = progress_max !== undefined && progress_max !== '';
+
+      // Only apply progress filters when a real value is provided (avoid treating empty strings as 0)
+      if (hasProgressMin || hasProgressMax) {
+        projectWhere.progress = {};
+        if (hasProgressMin) projectWhere.progress.gte = Number(progress_min);
+        if (hasProgressMax) projectWhere.progress.lte = Number(progress_max);
+      }
+
+      if (team_status) teamWhere.status = team_status as any;
+      if (rdb_registration_status) teamWhere.rdb_registration_status = rdb_registration_status as string;
+      if (team_id) teamWhere.id = team_id as string;
+      if (enrollment_from || enrollment_to) {
+        teamWhere.enrollment_date = {};
+        if (enrollment_from) teamWhere.enrollment_date.gte = new Date(enrollment_from as string);
+        if (enrollment_to) teamWhere.enrollment_date.lte = new Date(enrollment_to as string);
+      }
+
+      // Restrict scope for incubator/mentor based on teams
+      if (userRole === 'incubator') {
+        teamWhere.team_members = {
+          some: { user_id: userId }
+        };
+      } else if (userRole === 'mentor') {
+        teamWhere.mentor_assignments = {
+          some: {
+            mentor: {
+              user_id: userId
+            }
+          }
+        };
+      }
+
+      if (mentor_id) {
+        teamWhere.mentor_assignments = {
+          some: {
+            mentor_id: mentor_id as string
+          }
+        };
+      }
+
+      const teams = await prisma.team.findMany({
+        where: teamWhere,
+        orderBy: { created_at: 'desc' },
+        include: {
+          team_members: {
+            where: { role: 'team_leader' },
+            include: {
+              user: {
+                select: {
+                  name: true,
+                  email: true,
+                  phone: true,
+                  current_role: true,
+                  support_interests: true,
+                  program_of_study: true,
+                  graduation_year: true,
+                }
+              }
+            }
+          },
+          mentor_assignments: {
+            select: {
+              assigned_at: true,
+              mentor: {
+                select: {
+                  user: {
+                    select: {
+                      name: true,
+                      email: true,
+                      phone: true,
+                    }
+                  },
+                  phone: true,
+                  id: true,
+                }
+              }
+            }
+          },
+          projects: {
+            where: projectWhere,
+            select: {
+              id: true,
+              name: true,
+              category: true,
+              challenge_description: true,
+              status_at_enrollment: true,
+              status: true,
+              progress: true,
+              created_at: true,
+              updated_at: true,
+            },
+            orderBy: { created_at: 'desc' }
+          }
+        }
+      });
+
+      const rows: any[] = [];
+      let snCounter = 1;
+
+      teams.forEach((team) => {
+        const leader = team.team_members?.[0]?.user;
+        const mentorAssign = team.mentor_assignments?.[0];
+        const mentorUser = mentorAssign?.mentor?.user;
+
+        const projectsSummary =
+          team.projects && team.projects.length > 0
+            ? team.projects
+                .map((p) => {
+                  const detail = [
+                    `Field: ${p.category || '-'}`,
+                    `Status: ${p.status || '-'}`,
+                    p.status_at_enrollment ? `Enroll: ${p.status_at_enrollment}` : null,
+                    p.progress != null ? `Progress: ${p.progress}%` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' | ');
+                  return `${p.name || '-'}${detail ? ` (${detail})` : ''}`;
+                })
+                .join(' ; ')
+            : '-';
+
+        if (team.projects && team.projects.length > 0) {
+          team.projects.forEach((p) => {
+            rows.push({
+              sn: snCounter++,
+              team_id: team.id,
+              company_name: team.company_name || '',
+              rdb_registration_status: team.rdb_registration_status || '',
+              enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+              team_status: team.status || '',
+              mentor_name: mentorUser?.name || '',
+              mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+              mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+              innovator_name: leader?.name || '',
+              innovator_email: leader?.email || '',
+              innovator_phone: leader?.phone || '',
+              innovator_current_role: leader?.current_role || '',
+              innovator_support_interests: Array.isArray(leader?.support_interests)
+                ? (leader?.support_interests as unknown as string[]).join(' | ')
+                : leader?.support_interests || '',
+              department: leader?.program_of_study || '',
+              planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+              project_title: p.name || '',
+              project_field: p.category || '',
+              project_challenge_description: p.challenge_description || '',
+              status_at_enrollment: p.status_at_enrollment || '',
+              current_status: p.status || '',
+              progress: p.progress ?? null,
+              project_created_at: p.created_at ? p.created_at.toISOString() : '',
+              project_updated_at: p.updated_at ? p.updated_at.toISOString() : '',
+            });
+          });
+        } else {
+          rows.push({
+            sn: snCounter++,
+            team_id: team.id,
+            company_name: team.company_name || '',
+            rdb_registration_status: team.rdb_registration_status || '',
+            enrollment_date: team.enrollment_date ? team.enrollment_date.toISOString() : '',
+            team_status: team.status || '',
+            mentor_name: mentorUser?.name || '',
+            mentor_contact: mentorUser?.email || mentorUser?.phone || '',
+            mentor_assignment_date: mentorAssign?.assigned_at ? mentorAssign.assigned_at.toISOString() : '',
+            innovator_name: leader?.name || '',
+            innovator_email: leader?.email || '',
+            innovator_phone: leader?.phone || '',
+              innovator_current_role: leader?.current_role || '',
+              innovator_support_interests: Array.isArray(leader?.support_interests)
+                ? (leader?.support_interests as unknown as string[]).join(' | ')
+                : leader?.support_interests || '',
+            department: leader?.program_of_study || '',
+            planned_graduation_date: leader?.graduation_year ? `${leader.graduation_year}` : '',
+            project_title: '-',
+            project_field: '-',
+              project_challenge_description: '',
+            status_at_enrollment: '-',
+            current_status: '-',
+            progress: null,
+            project_created_at: '',
+            project_updated_at: '',
+          });
+        }
+      });
+
+      if (exportType === 'csv') {
+        const header = Object.keys(rows[0] || {}).filter(
+          (h) => h !== 'project_created_at' && h !== 'project_updated_at' && h !== 'team_id'
+        );
+        const csv = [
+          header.join(','),
+          ...rows.map(r => header.map(h => {
+            const val = (r as any)[h];
+            if (val === null || val === undefined) return '';
+            const str = String(val).replace(/"/g, '""');
+            return `"${str}"`;
+          }).join(','))
+        ].join('\n');
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="general_report.csv"');
+        res.send(csv);
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: 'General report generated successfully',
+        data: {
+          rows,
+          total: rows.length
+        }
+      } as ReportsResponse);
+    } catch (error) {
+      console.error('General report error:', error);
       res.status(500).json({
         success: false,
         message: 'Internal server error'
