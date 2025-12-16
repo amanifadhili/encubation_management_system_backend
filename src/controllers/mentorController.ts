@@ -691,7 +691,7 @@ export class MentorController {
       }
       console.log('Team found:', team.id);
 
-      // Check if assignment already exists
+      // Check if assignment already exists (mentor can be assigned to multiple teams, but not the same team twice)
       const existingAssignment = await prisma.mentorAssignment.findFirst({
         where: {
           mentor_id: id,
@@ -703,54 +703,6 @@ export class MentorController {
         res.status(400).json({
           success: false,
           message: 'Mentor is already assigned to this team'
-        } as MentorResponse);
-        return;
-      }
-
-      // Check if mentor is already assigned to another team (one-to-one relationship)
-      const mentorCurrentAssignment = await prisma.mentorAssignment.findFirst({
-        where: {
-          mentor_id: id
-        },
-        include: {
-          team: {
-            select: {
-              team_name: true
-            }
-          }
-        }
-      });
-
-      if (mentorCurrentAssignment) {
-        res.status(400).json({
-          success: false,
-          message: `Mentor is already assigned to team "${mentorCurrentAssignment.team.team_name}". Each mentor can only be assigned to one team. Please remove the current assignment first.`
-        } as MentorResponse);
-        return;
-      }
-
-      // Check if team already has a mentor assigned (one-to-one relationship)
-      const teamCurrentAssignment = await prisma.mentorAssignment.findFirst({
-        where: {
-          team_id
-        },
-        include: {
-          mentor: {
-            include: {
-              user: {
-                select: {
-                  name: true
-                }
-              }
-            }
-          }
-        }
-      });
-
-      if (teamCurrentAssignment) {
-        res.status(400).json({
-          success: false,
-          message: `Team already has mentor "${teamCurrentAssignment.mentor.user.name}" assigned. Each team can only have one mentor. Please remove the current assignment first.`
         } as MentorResponse);
         return;
       }
