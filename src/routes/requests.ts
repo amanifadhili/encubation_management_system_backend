@@ -46,4 +46,74 @@ router.delete('/:id', AuthMiddleware.authenticate, RequestController.deleteReque
  */
 router.get('/team/:teamId', AuthMiddleware.authenticate, RequestController.getTeamRequests);
 
+/**
+ * @route POST /api/requests/:id/submit
+ * @desc Submit a draft request (change status to submitted/pending_review)
+ * @access Private (Requester only)
+ */
+router.post('/:id/submit', AuthMiddleware.authenticate, RequestController.submitRequest);
+
+/**
+ * @route POST /api/requests/:id/cancel
+ * @desc Cancel a request
+ * @access Private (Requester, Manager, Director)
+ */
+router.post('/:id/cancel', AuthMiddleware.authenticate, RequestController.cancelRequest);
+
+/**
+ * @route POST /api/requests/:id/approve
+ * @desc Approve request at a specific approval level
+ * @access Private (Approver for that level)
+ */
+router.post('/:id/approve', AuthMiddleware.authenticate, requireManager, RequestController.approveRequest);
+
+/**
+ * @route POST /api/requests/:id/decline
+ * @desc Decline request at a specific approval level
+ * @access Private (Approver for that level)
+ */
+router.post('/:id/decline', AuthMiddleware.authenticate, requireManager, RequestController.declineRequest);
+
+/**
+ * @route POST /api/requests/:id/delegate
+ * @desc Delegate approval to another user
+ * @access Private (Approver for that level)
+ */
+router.post('/:id/delegate', AuthMiddleware.authenticate, requireManager, RequestController.delegateApproval);
+
+/**
+ * @route GET /api/requests/:id/comments
+ * @desc Get comments for a request
+ * @access Private (Role-based access)
+ */
+router.get('/:id/comments', AuthMiddleware.authenticate, RequestController.getComments);
+
+/**
+ * @route POST /api/requests/:id/comments
+ * @desc Add a comment to a request
+ * @access Private (Role-based access)
+ */
+router.post('/:id/comments', AuthMiddleware.authenticate, RequestController.addComment);
+
+/**
+ * @route PUT /api/requests/:id/comments/:commentId
+ * @desc Update a comment
+ * @access Private (Comment author, Manager, Director)
+ */
+router.put('/:id/comments/:commentId', AuthMiddleware.authenticate, RequestController.updateComment);
+
+/**
+ * @route DELETE /api/requests/:id/comments/:commentId
+ * @desc Delete a comment
+ * @access Private (Comment author, Manager, Director)
+ */
+router.delete('/:id/comments/:commentId', AuthMiddleware.authenticate, RequestController.deleteComment);
+
+/**
+ * @route PUT /api/requests/:id/delivery
+ * @desc Update delivery status and confirm delivery
+ * @access Private (Manager, Director)
+ */
+router.put('/:id/delivery', AuthMiddleware.authenticate, requireManager, RequestController.updateDeliveryStatus);
+
 export default router;
