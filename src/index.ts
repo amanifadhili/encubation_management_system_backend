@@ -21,6 +21,13 @@ import dashboardRoutes from './routes/dashboard';
 import uploadRoutes from './routes/upload';
 import emailPreferencesRoutes from './routes/emailPreferences';
 import emailRoutes from './routes/email';
+import locationRoutes from './routes/locations';
+import supplierRoutes from './routes/suppliers';
+import consumptionRoutes from './routes/consumption';
+import reservationRoutes from './routes/reservations';
+import maintenanceRoutes from './routes/maintenance';
+import requestTemplateRoutes from './routes/requestTemplates';
+import barcodeRoutes from './routes/barcode';
 
 // Load environment variables
 dotenv.config();
@@ -61,6 +68,13 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/email-preferences', emailPreferencesRoutes);
 app.use('/api/email', emailRoutes);
+app.use('/api/locations', locationRoutes);
+app.use('/api/suppliers', supplierRoutes);
+app.use('/api/consumption', consumptionRoutes);
+app.use('/api/reservations', reservationRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/request-templates', requestTemplateRoutes);
+app.use('/api/barcode', barcodeRoutes);
 app.use('/api', messageRoutes);
 
 // Basic route

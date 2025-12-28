@@ -81,16 +81,78 @@ enum CurrentRoleInProject {
   Other
 }
 
+enum ItemCategory {
+  Equipment
+  Tools
+  Furniture
+  Electronics
+  Consumables
+  Refreshments
+  OfficeSupplies
+  Software
+  Vehicles
+  Other
+}
+
+enum ItemType {
+  Perishable
+  NonPerishable
+  Returnable
+  Consumable
+  Refreshment
+  FixedAsset
+}
+
+enum ItemCondition {
+  New
+  Good
+  Fair
+  Poor
+  Damaged
+  Retired
+}
+
 enum InventoryStatus {
   available
-  low_stock
+  reserved
+  assigned
+  maintenance
+  damaged
+  retired
+  disposed
   out_of_stock
+  low_stock
+}
+
+enum RequestPriority {
+  Low
+  Medium
+  High
+  Urgent
 }
 
 enum RequestStatus {
-  pending
+  draft
+  submitted
+  pending_review
   approved
+  partially_approved
   declined
+  cancelled
+  ordered
+  in_transit
+  delivered
+  completed
+  returned
+}
+
+enum DeliveryStatus {
+  not_ordered
+  ordered
+  in_transit
+  delivered
+  delayed
+  cancelled
 }
 
 enum MessageType {
@@ -116,13 +178,13 @@ enum EmailStatus {
 
 // User model
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password_hash String
-  role          UserRole
-  status        UserStatus @default(active)
+  id              String         @id @default(cuid())
+  email           String         @unique
+  password_hash   String
+  role            UserRole
+  status          UserStatus     @default(active)
   password_status PasswordStatus @default(needs_change)
-  name          String // Keep for backward compatibility
+  name            String // Keep for backward compatibility
 
   // Phase 1: Essential Information
   first_name        String?
@@ -156,37 +218,51 @@ model User {
   updated_at DateTime @updatedAt
 
   // Relations
-  team_members          TeamMember[]
-  projects_uploaded     ProjectFile[]
-  mentors_created       Mentor[]
-  requests_created      MaterialRequest[] @relation("RequestedBy")
-  requests_reviewed     MaterialRequest[] @relation("ReviewedBy")
-  messages_sent         Message[]
-  notifications_sent    Notification[]
-  announcements_created Announcement[]
-  email_preferences     EmailPreferences?
+  team_members                   TeamMember[]
+  projects_uploaded              ProjectFile[]
+  mentors_created                Mentor[]
+  requests_created               MaterialRequest[]      @relation("RequestedBy")
+  requests_reviewed              MaterialRequest[]      @relation("ReviewedBy")
+  requests_approved              MaterialRequest[]      @relation("ApprovedBy")
+  request_comments               RequestComment[]
+  request_attachments            RequestAttachment[]
+  request_history                RequestHistory[]
+  request_approvals              RequestApproval[]      @relation("RequestApprover")
+  request_approvals_delegated    RequestApproval[]      @relation("RequestApprovalDelegate")
+  request_templates_created      RequestTemplate[]
+  messages_sent                  Message[]
+  notifications_sent             Notification[]
+  announcements_created          Announcement[]
+  email_preferences              EmailPreferences?
+  inventory_assignments_assigned InventoryAssignment[]
+  inventory_transactions         InventoryTransaction[]
+  consumption_logs_distributed   ConsumptionLog[]
+  maintenance_logs_performed     MaintenanceLog[]
+  InventoryReservation           InventoryReservation[]
 
   @@map("users")
 }
 
 // Team model
 model Team {
-  id                   String     @id @default(cuid())
-  team_name            String
-  company_name         String?
-  status               TeamStatus @default(pending)
-  enrollment_date      DateTime?  // Date the company/team enrolled in the hub
+  id                      String     @id @default(cuid())
+  team_name               String
+  company_name            String?
+  status                  TeamStatus @default(pending)
+  enrollment_date         DateTime? // Date the company/team enrolled in the hub
   rdb_registration_status String? // RDB registration status
-  deactivated_at       DateTime?  // Timestamp when team was deactivated (soft delete)
-  created_at           DateTime   @default(now())
-  updated_at           DateTime   @updatedAt
+  deactivated_at          DateTime? // Timestamp when team was deactivated (soft delete)
+  created_at              DateTime   @default(now())
+  updated_at              DateTime   @updatedAt
 
   // Relations
-  team_members          TeamMember[]
-  projects              Project[]
-  mentor_assignments    MentorAssignment[]
-  inventory_assignments InventoryAssignment[]
-  material_requests     MaterialRequest[]
+  team_members           TeamMember[]
+  projects               Project[]
+  mentor_assignments     MentorAssignment[]
+  inventory_assignments  InventoryAssignment[]
+  inventory_reservations InventoryReservation[]
+  material_requests      MaterialRequest[]
+  consumption_logs       ConsumptionLog[]
 
   @@map("teams")
 }
@@ -226,8 +302,9 @@ model Project {
   updated_at DateTime        @updatedAt
 
   // Relations
-  team          Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
-  project_files ProjectFile[]
+  team            Team            @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  project_files   ProjectFile[]
+  material_requests MaterialRequest[]
 
   @@map("projects")
 }
@@ -282,57 +359,383 @@ model MentorAssignment {
 
 // Inventory Item model
 model InventoryItem {
-  id                 String          @id @default(cuid())
-  name               String
-  description        String?
-  total_quantity     Int             @default(0)
-  available_quantity Int             @default(0)
-  status             InventoryStatus @default(available)
-  created_at         DateTime        @default(now())
-  updated_at         DateTime        @updatedAt
+  id          String       @id @default(cuid())
+  name        String
+  description String?      @db.Text
+  category    ItemCategory @default(Other)
+  item_type   ItemType     @default(Consumable)
+  tags        Json? // Array of tags
+
+  // Identification
+  sku           String? @unique // Stock Keeping Unit
+  barcode       String? @unique
+  serial_number String? @unique
+
+  // Quantities
+  total_quantity     Int @default(0)
+  available_quantity Int @default(0)
+  reserved_quantity  Int @default(0)
+  consumed_quantity  Int @default(0) // For consumables/refreshments
+
+  // Replenishment (for consumables/refreshments)
+  min_stock_level  Int? // Alert when below this
+  reorder_quantity Int? // Quantity to reorder
+  last_replenished DateTime?
+
+  // Physical
+  condition   ItemCondition   @default(Good)
+  status      InventoryStatus @default(available)
+  location_id String?
+
+  // Warranty & Maintenance
+  warranty_start       DateTime?
+  warranty_end         DateTime?
+  warranty_provider    String?
+  maintenance_interval Int? // Days between maintenance
+  last_maintenance     DateTime?
+  next_maintenance     DateTime?
+
+  // Supplier
+  supplier_id   String?
+  purchase_date DateTime?
+
+  // Expiration (for consumables/refreshments)
+  expiration_date DateTime?
+  batch_number    String? // For tracking batches of consumables
+
+  // Consumption tracking (for refreshments/consumables)
+  is_frequently_distributed Boolean @default(false) // Coffee, water, juice, snacks, etc.
+  distribution_unit         String? // cup, bottle, packet, kg, liter, etc.
+  typical_consumption_rate  Int? // Average consumption per day/week (for planning)
+
+  // Metadata
+  custom_fields Json? // Flexible custom fields
+  notes         String? @db.Text
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // Relations
-  inventory_assignments InventoryAssignment[]
+  location               StorageLocation?       @relation(fields: [location_id], references: [id])
+  supplier               Supplier?              @relation(fields: [supplier_id], references: [id])
+  inventory_assignments  InventoryAssignment[]
+  inventory_reservations InventoryReservation[]
+  inventory_transactions InventoryTransaction[]
+  maintenance_logs       MaintenanceLog[]
+  consumption_logs       ConsumptionLog[]
+  request_items          RequestItem[]
 
   @@map("inventory_items")
 }
 
-// Inventory Assignment model
-model InventoryAssignment {
-  id          String    @id @default(cuid())
-  item_id     String
-  team_id     String
-  quantity    Int
-  assigned_at DateTime  @default(now())
-  returned_at DateTime?
+// Storage Location model
+model StorageLocation {
+  id                 String   @id @default(cuid())
+  name               String
+  building           String?
+  floor              String?
+  room               String?
+  shelf              String?
+  bin                String?
+  parent_location_id String?
+  notes              String?  @db.Text
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
 
   // Relations
-  item InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
-  team Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  parent_location StorageLocation?  @relation("LocationHierarchy", fields: [parent_location_id], references: [id])
+  child_locations StorageLocation[] @relation("LocationHierarchy")
+  items           InventoryItem[]
+
+  @@map("storage_locations")
+}
+
+// Supplier model
+model Supplier {
+  id             String   @id @default(cuid())
+  name           String
+  contact_person String?
+  email          String?
+  phone          String?
+  address        String?  @db.Text
+  notes          String?  @db.Text
+  rating         Decimal? @db.Decimal(3, 2) // Quality/service rating (1-5)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  // Relations
+  items InventoryItem[]
+
+  @@map("suppliers")
+}
+
+// Inventory Assignment model
+model InventoryAssignment {
+  id               String         @id @default(cuid())
+  item_id          String
+  team_id          String
+  quantity         Int
+  assigned_by      String
+  assigned_at      DateTime       @default(now())
+  expected_return  DateTime?
+  returned_at      DateTime?
+  return_condition ItemCondition?
+  return_notes     String?        @db.Text
+  status           String         @default("active") // active, returned, lost, damaged
+
+  // Relations
+  item     InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  team     Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  assigner User          @relation(fields: [assigned_by], references: [id])
 
   @@map("inventory_assignments")
 }
 
-// Material Request model
-model MaterialRequest {
-  id           String        @id @default(cuid())
-  team_id      String
-  item_name    String
-  description  String?
-  notes        String?
-  quantity     Int?
-  status       RequestStatus @default(pending)
-  requested_by String
-  reviewed_by  String?
-  requested_at DateTime      @default(now())
-  reviewed_at  DateTime?
+// Inventory Reservation model
+model InventoryReservation {
+  id             String   @id @default(cuid())
+  item_id        String
+  team_id        String
+  quantity       Int
+  reserved_by    String
+  reserved_at    DateTime @default(now())
+  reserved_until DateTime
+  status         String   @default("pending") // pending, confirmed, cancelled, expired
+  notes          String?  @db.Text
 
   // Relations
-  team      Team  @relation(fields: [team_id], references: [id], onDelete: Cascade)
-  requester User  @relation("RequestedBy", fields: [requested_by], references: [id])
-  reviewer  User? @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+  item     InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  team     Team          @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  reserver User          @relation(fields: [reserved_by], references: [id])
+
+  @@map("inventory_reservations")
+}
+
+// Inventory Transaction model (for audit trail)
+model InventoryTransaction {
+  id                String   @id @default(cuid())
+  item_id           String
+  transaction_type  String // assign, return, add, remove, adjust, damage, consume
+  quantity          Int
+  previous_quantity Int
+  new_quantity      Int
+  performed_by      String
+  notes             String?  @db.Text
+  created_at        DateTime @default(now())
+
+  // Relations
+  item      InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  performer User          @relation(fields: [performed_by], references: [id])
+
+  @@map("inventory_transactions")
+}
+
+// Maintenance Log model
+model MaintenanceLog {
+  id               String    @id @default(cuid())
+  item_id          String
+  maintenance_type String // scheduled, repair, inspection, cleaning
+  performed_by     String?
+  performed_at     DateTime
+  notes            String?   @db.Text
+  next_maintenance DateTime?
+
+  // Relations
+  item       InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  technician User?         @relation(fields: [performed_by], references: [id])
+
+  @@map("maintenance_logs")
+}
+
+// Consumption Log model (for refreshments/consumables tracking)
+model ConsumptionLog {
+  id               String   @id @default(cuid())
+  item_id          String
+  team_id          String?
+  quantity         Int
+  unit             String? // cup, bottle, packet, etc.
+  distributed_by   String
+  distributed_to   String? // Individual name or "Team Meeting", "Event", etc.
+  consumption_date DateTime @default(now())
+  consumption_type String? // daily_distribution, event, meeting, etc.
+  notes            String?  @db.Text // Special notes (e.g., "for team meeting", "workshop refreshments")
+
+  // Relations
+  item        InventoryItem @relation(fields: [item_id], references: [id], onDelete: Cascade)
+  team        Team?         @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  distributor User          @relation(fields: [distributed_by], references: [id])
+
+  @@map("consumption_logs")
+}
+
+// Material Request model
+model MaterialRequest {
+  id                   String          @id @default(cuid())
+  request_number       String          @unique // Auto-generated: REQ-YYYY-XXXX
+  team_id              String
+  project_id           String?         // Link to project if applicable
+
+  // Request Details
+  title                String
+  description          String?         @db.Text
+  priority             RequestPriority @default(Medium)
+  urgency_reason       String?
+
+  // Status & Workflow
+  status               RequestStatus   @default(draft)
+  current_approver     String?
+  approval_chain       Json?           // Array of approver IDs
+
+  // Request Type
+  is_consumable_request Boolean        @default(false) // For refreshments/consumables
+  requires_quick_approval Boolean      @default(false) // Fast-track for common items
+
+  // Dates
+  requested_at         DateTime        @default(now())
+  required_by          DateTime?       // Deadline
+  reviewed_at          DateTime?
+  approved_at          DateTime?
+  ordered_at           DateTime?
+  delivered_at         DateTime?
+  completed_at         DateTime?
+
+  // People
+  requested_by         String
+  reviewed_by          String?
+  approved_by          String?
+
+  // Delivery
+  delivery_status      DeliveryStatus  @default(not_ordered)
+  delivery_address     String?
+  delivery_notes       String?
+  expected_delivery    DateTime?
+
+  // Metadata
+  notes                String?         @db.Text
+  internal_notes       String?         @db.Text // For managers only
+
+  // Relations
+  team                 Team            @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  project              Project?        @relation(fields: [project_id], references: [id])
+  requester            User            @relation("RequestedBy", fields: [requested_by], references: [id])
+  reviewer             User?           @relation("ReviewedBy", fields: [reviewed_by], references: [id])
+  approver             User?           @relation("ApprovedBy", fields: [approved_by], references: [id])
+  items                RequestItem[]
+  comments             RequestComment[]
+  attachments          RequestAttachment[]
+  history              RequestHistory[]
+  approvals            RequestApproval[]
 
   @@map("material_requests")
+}
+
+model RequestItem {
+  id                   String          @id @default(cuid())
+  request_id           String
+  inventory_item_id    String?         // Link to inventory if exists
+  item_name            String          // Name if not in inventory
+  description          String?
+  quantity             Int
+  unit                 String?         // cup, bottle, packet, piece, etc.
+  notes                String?
+
+  // Status
+  status               String          @default("pending") // pending, approved, declined, distributed, delivered
+  approved_quantity    Int?            // If partially approved
+  distributed_quantity Int?            // Actually distributed (for consumables)
+
+  // For consumables/refreshments
+  is_consumable        Boolean         @default(false)
+  distribution_date    DateTime?       // When it was distributed
+
+  // Relations
+  request              MaterialRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  inventory_item       InventoryItem?  @relation(fields: [inventory_item_id], references: [id])
+
+  @@map("request_items")
+}
+
+model RequestComment {
+  id                   String          @id @default(cuid())
+  request_id           String
+  user_id              String
+  comment              String          @db.Text
+  is_internal          Boolean         @default(false) // Only visible to managers
+  created_at           DateTime        @default(now())
+
+  // Relations
+  request              MaterialRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  user                 User            @relation(fields: [user_id], references: [id])
+
+  @@map("request_comments")
+}
+
+model RequestAttachment {
+  id                   String          @id @default(cuid())
+  request_id           String
+  file_name            String
+  file_path            String
+  file_type            String?
+  file_size            Int?
+  uploaded_by          String
+  uploaded_at          DateTime        @default(now())
+
+  // Relations
+  request              MaterialRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  uploader             User            @relation(fields: [uploaded_by], references: [id])
+
+  @@map("request_attachments")
+}
+
+model RequestHistory {
+  id                   String          @id @default(cuid())
+  request_id           String
+  action               String          // created, updated, status_changed, commented, etc.
+  old_value            Json?
+  new_value            Json?
+  performed_by         String
+  performed_at         DateTime        @default(now())
+  notes                String?
+
+  // Relations
+  request              MaterialRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  performer            User            @relation(fields: [performed_by], references: [id])
+
+  @@map("request_history")
+}
+
+model RequestApproval {
+  id                   String          @id @default(cuid())
+  request_id           String
+  approver_id          String
+  approval_level       Int             // 1, 2, 3, etc.
+  status               String          @default("pending") // pending, approved, declined, delegated
+  delegated_to         String?
+  comments             String?
+  approved_at          DateTime?
+
+  // Relations
+  request              MaterialRequest @relation(fields: [request_id], references: [id], onDelete: Cascade)
+  approver             User            @relation("RequestApprover", fields: [approver_id], references: [id])
+  delegate             User?           @relation("RequestApprovalDelegate", fields: [delegated_to], references: [id])
+
+  @@map("request_approvals")
+}
+
+model RequestTemplate {
+  id                   String          @id @default(cuid())
+  name                 String
+  description          String?
+  category             String?
+  items                Json            // Array of template items
+  created_by           String
+  is_public            Boolean         @default(false)
+  created_at           DateTime        @default(now())
+
+  // Relations
+  creator              User            @relation(fields: [created_by], references: [id])
+
+  @@map("request_templates")
 }
 
 // Message model

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { InventoryItem, InventoryAssignment, Prisma } from '@prisma/client';
+import { InventoryItem, InventoryAssignment, Prisma, ItemCategory, ItemType, ItemCondition, InventoryStatus } from '@prisma/client';
 import prisma from '../config/database';
 import emailService from '../services/emailService';
 import { getTeamNotificationRecipients } from '../utils/emailHelpers';
@@ -7,15 +7,61 @@ import { getTeamNotificationRecipients } from '../utils/emailHelpers';
 interface CreateInventoryItemRequest {
   name: string;
   description?: string;
+  category?: ItemCategory;
+  item_type?: ItemType;
+  tags?: string[];
+  sku?: string;
+  barcode?: string;
+  serial_number?: string;
   total_quantity: number;
-  status?: string;
+  condition?: ItemCondition;
+  status?: InventoryStatus;
+  location_id?: string;
+  supplier_id?: string;
+  purchase_date?: string;
+  expiration_date?: string;
+  batch_number?: string;
+  warranty_start?: string;
+  warranty_end?: string;
+  warranty_provider?: string;
+  maintenance_interval?: number;
+  is_frequently_distributed?: boolean;
+  distribution_unit?: string;
+  typical_consumption_rate?: number;
+  min_stock_level?: number;
+  reorder_quantity?: number;
+  custom_fields?: any;
+  notes?: string;
 }
 
 interface UpdateInventoryItemRequest {
   name?: string;
   description?: string;
+  category?: ItemCategory;
+  item_type?: ItemType;
+  tags?: string[];
+  sku?: string;
+  barcode?: string;
+  serial_number?: string;
   total_quantity?: number;
-  status?: string;
+  condition?: ItemCondition;
+  status?: InventoryStatus;
+  location_id?: string;
+  supplier_id?: string;
+  purchase_date?: string;
+  expiration_date?: string;
+  batch_number?: string;
+  warranty_start?: string;
+  warranty_end?: string;
+  warranty_provider?: string;
+  maintenance_interval?: number;
+  is_frequently_distributed?: boolean;
+  distribution_unit?: string;
+  typical_consumption_rate?: number;
+  min_stock_level?: number;
+  reorder_quantity?: number;
+  custom_fields?: any;
+  notes?: string;
 }
 
 interface AssignInventoryRequest {
@@ -64,7 +110,10 @@ export class InventoryController {
       if (search) {
         where.OR = [
           { name: { contains: search as string } },
-          { description: { contains: search as string } }
+          { description: { contains: search as string } },
+          { sku: { contains: search as string } },
+          { barcode: { contains: search as string } },
+          { serial_number: { contains: search as string } }
         ];
       }
 
@@ -75,6 +124,22 @@ export class InventoryController {
       const items = await prisma.inventoryItem.findMany({
         where,
         include: {
+          location: {
+            select: {
+              id: true,
+              name: true,
+              building: true,
+              floor: true,
+              room: true
+            }
+          },
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+              contact_person: true
+            }
+          },
           inventory_assignments: {
             include: {
               team: {
@@ -88,7 +153,8 @@ export class InventoryController {
           },
           _count: {
             select: {
-              inventory_assignments: true
+              inventory_assignments: true,
+              consumption_logs: true
             }
           }
         },
@@ -144,6 +210,24 @@ export class InventoryController {
       const item = await prisma.inventoryItem.findUnique({
         where: { id },
         include: {
+          location: {
+            select: {
+              id: true,
+              name: true,
+              building: true,
+              floor: true,
+              room: true
+            }
+          },
+          supplier: {
+            select: {
+              id: true,
+              name: true,
+              contact_person: true,
+              email: true,
+              phone: true
+            }
+          },
           inventory_assignments: {
             include: {
               team: {
@@ -159,7 +243,8 @@ export class InventoryController {
           },
           _count: {
             select: {
-              inventory_assignments: true
+              inventory_assignments: true,
+              consumption_logs: true
             }
           }
         }
@@ -205,7 +290,35 @@ export class InventoryController {
    */
   static async createItem(req: Request, res: Response): Promise<void> {
     try {
-      const { name, description, total_quantity, status }: CreateInventoryItemRequest = req.body;
+      const {
+        name,
+        description,
+        category,
+        item_type,
+        tags,
+        sku,
+        barcode,
+        serial_number,
+        total_quantity,
+        condition,
+        status,
+        location_id,
+        supplier_id,
+        purchase_date,
+        expiration_date,
+        batch_number,
+        warranty_start,
+        warranty_end,
+        warranty_provider,
+        maintenance_interval,
+        is_frequently_distributed,
+        distribution_unit,
+        typical_consumption_rate,
+        min_stock_level,
+        reorder_quantity,
+        custom_fields,
+        notes
+      }: CreateInventoryItemRequest = req.body;
 
       // Validate required fields
       if (!name || total_quantity === undefined) {
@@ -238,16 +351,104 @@ export class InventoryController {
         return;
       }
 
-      // Create inventory item
-      const item = await prisma.inventoryItem.create({
-        data: {
+      // Check for unique fields conflicts
+      if (sku) {
+        const existingSku = await prisma.inventoryItem.findUnique({ where: { sku } });
+        if (existingSku) {
+          res.status(400).json({
+            success: false,
+            message: 'Inventory item with this SKU already exists'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      if (barcode) {
+        const existingBarcode = await prisma.inventoryItem.findUnique({ where: { barcode } });
+        if (existingBarcode) {
+          res.status(400).json({
+            success: false,
+            message: 'Inventory item with this barcode already exists'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      if (serial_number) {
+        const existingSerial = await prisma.inventoryItem.findUnique({ where: { serial_number } });
+        if (existingSerial) {
+          res.status(400).json({
+            success: false,
+            message: 'Inventory item with this serial number already exists'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      // Validate location if provided
+      if (location_id) {
+        const location = await prisma.storageLocation.findUnique({ where: { id: location_id } });
+        if (!location) {
+          res.status(400).json({
+            success: false,
+            message: 'Storage location not found'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      // Validate supplier if provided
+      if (supplier_id) {
+        const supplier = await prisma.supplier.findUnique({ where: { id: supplier_id } });
+        if (!supplier) {
+          res.status(400).json({
+            success: false,
+            message: 'Supplier not found'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      // Prepare data object
+      const itemData: any = {
           name,
           description,
+        category: category || 'Other',
+        item_type: item_type || 'Consumable',
           total_quantity,
-          available_quantity: total_quantity, // Initially all available
-          status: (status as any) || 'available'
-        },
+        available_quantity: total_quantity,
+        condition: condition || 'Good',
+        status: status || 'available'
+      };
+
+      // Add optional fields if provided
+      if (tags) itemData.tags = tags;
+      if (sku) itemData.sku = sku;
+      if (barcode) itemData.barcode = barcode;
+      if (serial_number) itemData.serial_number = serial_number;
+      if (location_id) itemData.location_id = location_id;
+      if (supplier_id) itemData.supplier_id = supplier_id;
+      if (purchase_date) itemData.purchase_date = new Date(purchase_date);
+      if (expiration_date) itemData.expiration_date = new Date(expiration_date);
+      if (batch_number) itemData.batch_number = batch_number;
+      if (warranty_start) itemData.warranty_start = new Date(warranty_start);
+      if (warranty_end) itemData.warranty_end = new Date(warranty_end);
+      if (warranty_provider) itemData.warranty_provider = warranty_provider;
+      if (maintenance_interval !== undefined) itemData.maintenance_interval = maintenance_interval;
+      if (is_frequently_distributed !== undefined) itemData.is_frequently_distributed = is_frequently_distributed;
+      if (distribution_unit) itemData.distribution_unit = distribution_unit;
+      if (typical_consumption_rate !== undefined) itemData.typical_consumption_rate = typical_consumption_rate;
+      if (min_stock_level !== undefined) itemData.min_stock_level = min_stock_level;
+      if (reorder_quantity !== undefined) itemData.reorder_quantity = reorder_quantity;
+      if (custom_fields) itemData.custom_fields = custom_fields;
+      if (notes) itemData.notes = notes;
+
+      // Create inventory item
+      const item = await prisma.inventoryItem.create({
+        data: itemData,
         include: {
+          location: true,
+          supplier: true,
           inventory_assignments: true,
           _count: {
             select: {
@@ -278,7 +479,35 @@ export class InventoryController {
   static async updateItem(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, description, total_quantity, status }: UpdateInventoryItemRequest = req.body;
+      const {
+        name,
+        description,
+        category,
+        item_type,
+        tags,
+        sku,
+        barcode,
+        serial_number,
+        total_quantity,
+        condition,
+        status,
+        location_id,
+        supplier_id,
+        purchase_date,
+        expiration_date,
+        batch_number,
+        warranty_start,
+        warranty_end,
+        warranty_provider,
+        maintenance_interval,
+        is_frequently_distributed,
+        distribution_unit,
+        typical_consumption_rate,
+        min_stock_level,
+        reorder_quantity,
+        custom_fields,
+        notes
+      }: UpdateInventoryItemRequest = req.body;
 
       // Check if item exists
       const existingItem = await prisma.inventoryItem.findUnique({
@@ -314,6 +543,68 @@ export class InventoryController {
         }
       }
 
+      // Check for unique fields conflicts
+      if (sku && sku !== existingItem.sku) {
+        const existingSku = await prisma.inventoryItem.findUnique({ where: { sku } });
+        if (existingSku) {
+          res.status(400).json({
+            success: false,
+            message: 'Inventory item with this SKU already exists'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      if (barcode && barcode !== existingItem.barcode) {
+        const existingBarcode = await prisma.inventoryItem.findUnique({ where: { barcode } });
+        if (existingBarcode) {
+          res.status(400).json({
+            success: false,
+            message: 'Inventory item with this barcode already exists'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      if (serial_number && serial_number !== existingItem.serial_number) {
+        const existingSerial = await prisma.inventoryItem.findUnique({ where: { serial_number } });
+        if (existingSerial) {
+          res.status(400).json({
+            success: false,
+            message: 'Inventory item with this serial number already exists'
+          } as InventoryResponse);
+          return;
+        }
+      }
+
+      // Validate location if provided
+      if (location_id !== undefined) {
+        if (location_id) {
+          const location = await prisma.storageLocation.findUnique({ where: { id: location_id } });
+          if (!location) {
+            res.status(400).json({
+              success: false,
+              message: 'Storage location not found'
+            } as InventoryResponse);
+            return;
+          }
+        }
+      }
+
+      // Validate supplier if provided
+      if (supplier_id !== undefined) {
+        if (supplier_id) {
+          const supplier = await prisma.supplier.findUnique({ where: { id: supplier_id } });
+          if (!supplier) {
+            res.status(400).json({
+              success: false,
+              message: 'Supplier not found'
+            } as InventoryResponse);
+            return;
+          }
+        }
+      }
+
       // Calculate current assigned quantity
       const assignedQuantity = existingItem.inventory_assignments.reduce(
         (total, assignment) => total + assignment.quantity, 0
@@ -338,16 +629,46 @@ export class InventoryController {
         }
       }
 
+      // Prepare update data object
+      const updateData: any = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (category !== undefined) updateData.category = category;
+      if (item_type !== undefined) updateData.item_type = item_type;
+      if (tags !== undefined) updateData.tags = tags;
+      if (sku !== undefined) updateData.sku = sku;
+      if (barcode !== undefined) updateData.barcode = barcode;
+      if (serial_number !== undefined) updateData.serial_number = serial_number;
+      if (total_quantity !== undefined) {
+        updateData.total_quantity = total_quantity;
+        updateData.available_quantity = total_quantity - assignedQuantity;
+      }
+      if (condition !== undefined) updateData.condition = condition;
+      if (status !== undefined) updateData.status = status;
+      if (location_id !== undefined) updateData.location_id = location_id;
+      if (supplier_id !== undefined) updateData.supplier_id = supplier_id;
+      if (purchase_date !== undefined) updateData.purchase_date = purchase_date ? new Date(purchase_date) : null;
+      if (expiration_date !== undefined) updateData.expiration_date = expiration_date ? new Date(expiration_date) : null;
+      if (batch_number !== undefined) updateData.batch_number = batch_number;
+      if (warranty_start !== undefined) updateData.warranty_start = warranty_start ? new Date(warranty_start) : null;
+      if (warranty_end !== undefined) updateData.warranty_end = warranty_end ? new Date(warranty_end) : null;
+      if (warranty_provider !== undefined) updateData.warranty_provider = warranty_provider;
+      if (maintenance_interval !== undefined) updateData.maintenance_interval = maintenance_interval;
+      if (is_frequently_distributed !== undefined) updateData.is_frequently_distributed = is_frequently_distributed;
+      if (distribution_unit !== undefined) updateData.distribution_unit = distribution_unit;
+      if (typical_consumption_rate !== undefined) updateData.typical_consumption_rate = typical_consumption_rate;
+      if (min_stock_level !== undefined) updateData.min_stock_level = min_stock_level;
+      if (reorder_quantity !== undefined) updateData.reorder_quantity = reorder_quantity;
+      if (custom_fields !== undefined) updateData.custom_fields = custom_fields;
+      if (notes !== undefined) updateData.notes = notes;
+
       // Update item
       const item = await prisma.inventoryItem.update({
         where: { id },
-        data: {
-          ...(name && { name }),
-          ...(description !== undefined && { description }),
-          ...(total_quantity !== undefined && { total_quantity }),
-          ...(status && { status: status as any })
-        },
+        data: updateData,
         include: {
+          location: true,
+          supplier: true,
           inventory_assignments: {
             include: {
               team: {
@@ -523,7 +844,8 @@ export class InventoryController {
         data: {
           item_id: id,
           team_id,
-          quantity
+          quantity,
+          assigned_by: req.user!.userId
         },
         include: {
           item: {
