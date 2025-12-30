@@ -47,7 +47,7 @@ cat > ecosystem.config.cjs << 'EOF'
 module.exports = {
   apps: [{
     name: 'incubation-backend',
-    script: 'dist/index.js',
+    script: 'dist/src/index.js',
     cwd: '/home/library/incubation/encubation_management_system_backend',
     env: {
       NODE_ENV: 'production',
